@@ -15,6 +15,14 @@ config KSU_DEBUG
 	default n
 	help
 	  Enable KernelSU debug mode.
+	  
+config KSU_ALLOWLIST_WORKAROUND
+        bool "KernelSU Session Keyring Init workaround"
+        depends on KSU
+        default y
+        help
+          Enable session keyring init workaround for problematic devices.
+          Useful for situations where the SU allowlist is not kept after a reboot.
           
 menu "KernelSU - SUSFS"
 config KSU_SUSFS
