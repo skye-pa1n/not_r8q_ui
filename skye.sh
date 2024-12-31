@@ -19,11 +19,11 @@ make O=/home/skye/bomb/out ARCH=arm64 $BUILD_ENV not_defconfig
 make -j10 O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_ENV dtbs
 
 DTB_OUT="/home/skye/bomb/out/arch/arm64/boot/dts/vendor/qcom"
-cat $DTB_OUT/*.dtb > AnyKernel3/a14.dtb
+cat $DTB_OUT/*.dtb > /home/skye/bomb/AnyKernel3/a14.dtb
 
 make -j$(nproc --all) O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_ENV Image
 IMAGE="/home/skye/bomb/out/arch/arm64/boot/Image"
-mv $IMAGE AnyKernel3/Image
+mv $IMAGE /home/skye/bomb/AnyKernel3/ImageU
 
 cd AnyKernel3
 rm *.zip

@@ -84,16 +84,18 @@ oneui=$(file_getprop /system/build.prop ro.build.version.oneui);
 gsi=$(file_getprop /system/build.prop ro.product.system.device);
 if [ -n "$oneui" ]; then
    ui_print " "
-   ui_print " • OneUI ROM detected! Proceed with Caution! • "
+   ui_print " • OneUI ROM detected! • "
    ui_print " "
    ui_print " • Patching Fingerprint Sensor... • "
    patch_cmdline "android.is_aosp" "android.is_aosp=0";
+   mv $home/ImageU $home/Image
 elif [ $gsi == "generic" ]; then
    ui_print " "
-   ui_print " • GSI ROM detected! Proceed with Caution! • "
+   ui_print " • GSI ROM detected! • "
    ui_print " "
    ui_print " • Patching Fingerprint Sensor... • "
    patch_cmdline "android.is_aosp" "android.is_aosp=0";
+   mv $home/ImageU $home/Image
 else
    ui_print " "
    ui_print " • AOSP ROM detected! • "
@@ -127,6 +129,7 @@ else
    ui_print " "
    ui_print " • Patching Fingerprint Sensor... • "
    patch_cmdline "android.is_aosp" "android.is_aosp=1";
+   mv $home/ImageA $home/Image
 fi
 
 # end cmdline changes
