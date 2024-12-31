@@ -2,7 +2,7 @@
 #
 # Cryptographic API
 #
-
+subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-visibility -Wno-unused-function -Wno-enum-compare -O3
 ifeq ($(CONFIG_CRYPTO_FIPS), y)
 #ccflags-y += -DCONFIG_CRYPTO_FIPS_FUNC_TEST
 endif

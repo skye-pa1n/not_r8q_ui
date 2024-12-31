@@ -9046,6 +9046,8 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 		schedstat_inc(p->se.statistics.nr_failed_migrations_affine);
 
 		env->flags |= LBF_SOME_PINNED;
+		
+		struct root_domain *rd = env->dst_rq->rd;
 
 		/*
 		 * Remember if this task can be migrated to any other CPU in
@@ -9073,7 +9075,7 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 	/* Record that we found atleast one task that could run on dst_cpu */
 	env->flags &= ~LBF_ALL_PINNED;
 
-		struct root_domain *rd = env->dst_rq->rd;
+		struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 
 	if ((rcu_dereference(rd->pd) && !sd_overutilized(env->sd)) &&
 	    env->idle == CPU_NEWLY_IDLE && !env->prefer_spread &&

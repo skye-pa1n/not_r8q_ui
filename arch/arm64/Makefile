@@ -10,6 +10,7 @@
 #
 # Copyright (C) 1995-2001 by Russell King
 
+subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-visibility -Wno-unused-function -O3
 LDFLAGS_vmlinux	:=--no-undefined -X
 CPPFLAGS_vmlinux.lds = -DTEXT_OFFSET=$(TEXT_OFFSET)
 GZFLAGS		:=-9

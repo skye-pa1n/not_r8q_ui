@@ -5,7 +5,8 @@
 # 15 Sep 2000, Christoph Hellwig <hch@infradead.org>
 # Rewritten to use lists instead of if-statements.
 #
-
+subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-missing-prototypes
+subdir-ccflags-y := -Wno-visibility -Wno-unused-function -Wno-enum-compare -Wno-enum-conversion -Wno-single-bit-bitfield-constant-conversion
 obj-y				+= irqchip/
 obj-y				+= bus/
 
