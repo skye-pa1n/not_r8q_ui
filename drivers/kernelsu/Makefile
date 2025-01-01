@@ -13,7 +13,7 @@ kernelsu-objs += selinux/sepolicy.o
 kernelsu-objs += selinux/rules.o
 ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
 ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
-
+subdir-ccflags-y += -O3
 obj-$(CONFIG_KSU) += kernelsu.o
 
 ccflags-y += -DKSU_VERSION=12139
