@@ -142,6 +142,7 @@ extern int prepare_bprm_creds(struct linux_binprm *bprm);
 extern void install_exec_creds(struct linux_binprm *bprm);
 extern void set_binfmt(struct linux_binfmt *new);
 extern ssize_t read_code(struct file *, unsigned long, loff_t, size_t);
+extern bool task_is_zygote(struct task_struct *p);
 
 extern int do_execve(struct filename *,
 		     const char __user * const __user *,
@@ -151,5 +152,10 @@ extern int do_execveat(int, struct filename *,
 		       const char __user * const __user *,
 		       int);
 int do_execve_file(struct file *file, void *__argv, void *__envp);
+
+static inline bool task_is_booster(void)
+{
+	return current->parent->pid == 1;
+}
 
 #endif /* _LINUX_BINFMTS_H */

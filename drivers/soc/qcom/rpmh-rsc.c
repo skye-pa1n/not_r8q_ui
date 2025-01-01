@@ -18,11 +18,12 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
-#include <linux/module.h>
 
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/tcs.h>
 #include <dt-bindings/soc/qcom,rpmh-rsc.h>
+#include <linux/module.h>
+#include <linux/init.h>
 
 #include "rpmh-internal.h"
 

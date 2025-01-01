@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved. 
  */
 
 #include <asm/cacheflush.h>
@@ -75,15 +74,6 @@ _kgsl_get_pool_from_order(unsigned int order)
 static void
 _kgsl_pool_add_page(struct kgsl_page_pool *pool, struct page *p)
 {
-	/*
-	 * Sanity check to make sure we don't re-pool a page that
-	 * somebody else has a reference to.
-	 */
-	if (WARN_ON_ONCE(unlikely(page_count(p) > 1))) {
-		__free_pages(p, pool->pool_order);
-		return;
-	}
-	
 	kgsl_zero_page(p, pool->pool_order);
 
 	llist_add((struct llist_node *)&p->lru, &pool->page_list);
@@ -455,12 +445,16 @@ kgsl_pool_shrink_scan_objects(struct shrinker *shrinker,
 	/* nr represents number of pages to be removed*/
 	int nr = sc->nr_to_scan;
 	int total_pages = kgsl_pool_size_total();
+	unsigned long ret;
 
 	/* Target pages represents new  pool size */
 	int target_pages = (nr > total_pages) ? 0 : (total_pages - nr);
 
 	/* Reduce pool size to target_pages */
-	return kgsl_pool_reduce(target_pages, false);
+	ret = kgsl_pool_reduce(target_pages, false);
+
+	/* If we are unable to shrink more, stop trying */
+	return (ret == 0) ? SHRINK_STOP : ret;
 }
 
 static unsigned long

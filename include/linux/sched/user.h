@@ -6,6 +6,7 @@
 #include <linux/atomic.h>
 #include <linux/refcount.h>
 #include <linux/ratelimit.h>
+#include <linux/android_kabi.h>
 
 struct key;
 
@@ -46,14 +47,9 @@ struct user_struct {
 
 	/* Miscellaneous per-user rate limit */
 	struct ratelimit_state ratelimit;
-	
-#if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-        u64 android_kabi_reserved1;
-#endif
-	u64 android_kabi_reserved2;
-#endif
 
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
 };
 
 extern int uids_sysfs_init(void);

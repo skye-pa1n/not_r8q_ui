@@ -554,6 +554,11 @@ config OID_REGISTRY
 config UCS2_STRING
         tristate
 
+#
+# generic vdso
+#
+source "lib/vdso/Kconfig"
+
 source "lib/fonts/Kconfig"
 
 config SG_SPLIT
@@ -610,21 +615,6 @@ config PRIME_NUMBERS
 
 config STRING_SELFTEST
 	tristate "Test string functions"
-
-config FFSI
-	bool
-	default n
-	help
-	  Library to support FFSI class as the realization of Elastic Capacity
-	  Vessel abstract theory.
-
-config SCHED_FFSI_GLUE
-	bool
-	depends on FFSI
-	default y
-	help
-	  Glue interface sticking edge of CFS scheduler and smoother governor
-	  working based on FFSI concept strategy.
 
 endmenu
 

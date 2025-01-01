@@ -2679,7 +2679,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 		if (!init->filelen)
 			goto bail;
 
-		proc_name = kzalloc(init->filelen + 1, GFP_KERNEL);
+		proc_name = kzalloc(init->filelen, GFP_KERNEL);
 		VERIFY(err, !IS_ERR_OR_NULL(proc_name));
 		if (err)
 			goto bail;
@@ -5179,10 +5179,8 @@ static int __init fastrpc_device_init(void)
 
 	debugfs_root = debugfs_create_dir("adsprpc", NULL);
 	if (IS_ERR_OR_NULL(debugfs_root)) {
-#ifdef CONFIG_DEBUG_FS
 		pr_warn("Error: %s: %s: failed to create debugfs root dir\n",
 			current->comm, __func__);
-#endif
 		debugfs_remove_recursive(debugfs_root);
 		debugfs_root = NULL;
 	}

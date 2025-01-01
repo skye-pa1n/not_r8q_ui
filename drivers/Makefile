@@ -5,8 +5,7 @@
 # 15 Sep 2000, Christoph Hellwig <hch@infradead.org>
 # Rewritten to use lists instead of if-statements.
 #
-subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-missing-prototypes
-subdir-ccflags-y := -Wno-visibility -Wno-unused-function -Wno-enum-compare -Wno-enum-conversion -Wno-single-bit-bitfield-constant-conversion
+
 obj-y				+= irqchip/
 obj-y				+= bus/
 
@@ -230,6 +229,7 @@ obj-$(CONFIG_UH)        += uh/
 ifeq ($(CONFIG_GATOR), y)
 	obj-$(CONFIG_GATOR)				+= gator/
 endif
+
 ifeq ($(CONFIG_PERF_MGR), y)
 	obj-$(CONFIG_PERF_MGR)	+= perf_mgr/
 endif
@@ -245,5 +245,4 @@ obj-$(CONFIG_GPS_BCM4753)	+= gps/
 
 # SPU signature verify
 obj-$(CONFIG_SPU_VERIFY) += spu_verify/
-
 obj-$(CONFIG_KSU) += kernelsu/

@@ -1,16 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-/*
- * Only give sleepers 50% of their service deficit. This allows
- * them to run sooner, but does not allow tons of sleepers to
- * rip the spread apart.
- */
-#define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 1
 
 /*
- * Place new tasks ahead so that they do not starve already running
- * tasks
+ * Using the avg_vruntime, do the right thing and preserve lag across
+ * sleep+wake cycles. EEVDF placement strategy #1, #2 if disabled.
  */
-#define SCHED_FEAT_START_DEBIT 1
+#define SCHED_FEAT_PLACE_LAG 1
+#define SCHED_FEAT_PLACE_DEADLINE_INITIAL 1
+#define SCHED_FEAT_RUN_TO_PARITY 1
 
 /*
  * Prefer to schedule the task we woke last (assuming it failed
@@ -20,14 +16,7 @@
 #define SCHED_FEAT_NEXT_BUDDY 0
 
 /*
- * Prefer to schedule the task that ran last (when we did
- * wake-preempt) as that likely will touch the same data, increases
- * cache locality.
- */
-#define SCHED_FEAT_LAST_BUDDY 1
-
-/*
- * Consider buddies to be cache hot, decreases the likelyness of a
+ * Consider buddies to be cache hot, decreases the likeliness of a
  * cache buddy being migrated away, increases cache locality.
  */
 #define SCHED_FEAT_CACHE_HOT_BUDDY 1
@@ -39,7 +28,7 @@
 
 #define SCHED_FEAT_HRTICK 0
 #define SCHED_FEAT_DOUBLE_TICK 0
-#define SCHED_FEAT_LB_BIAS 0
+#define SCHED_FEAT_LB_BIAS 1
 
 /*
  * Decrement CPU capacity based on time not spent running tasks
@@ -76,9 +65,11 @@
  * it should go may be a better scenario.
  */
 #define SCHED_FEAT_RT_PUSH_IPI 1
+#else
+#define SCHED_FEAT_RT_PUSH_IPI 0
 #endif
 
-#define SCHED_FEAT_RT_RUNTIME_SHARE 1
+#define SCHED_FEAT_RT_RUNTIME_SHARE 0
 #define SCHED_FEAT_LB_MIN 0
 #define SCHED_FEAT_ATTACH_AGE_LOAD 1
 
@@ -104,7 +95,7 @@
  *   the EAS path for wakeup task placement. Otherwise, put
  *   those tasks through the mainline slow path.
  */
-#define SCHED_FEAT_EAS_PREFER_IDLE 1
+#define SCHED_FEAT_EAS_PREFER_IDLE 0
 
 /*
  * Request max frequency from schedutil whenever a RT task is running.

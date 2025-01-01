@@ -215,9 +215,11 @@ void rxrpc_disconnect_call(struct rxrpc_call *call)
 
 	call->peer->cong_cwnd = call->cong_cwnd;
 
-	spin_lock_bh(&conn->params.peer->lock);
-	hlist_del_rcu(&call->error_link);
-	spin_unlock_bh(&conn->params.peer->lock);
+	if (!hlist_unhashed(&call->error_link)) {
+		spin_lock_bh(&call->peer->lock);
+		hlist_del_rcu(&call->error_link);
+		spin_unlock_bh(&call->peer->lock);
+	}
 
 	if (rxrpc_is_client_call(call))
 		return rxrpc_disconnect_client_call(call);
@@ -257,7 +259,7 @@ void rxrpc_kill_connection(struct rxrpc_connection *conn)
 	 * must carry a ref on the connection to prevent us getting here whilst
 	 * it is queued or running.
 	 */
-	call_rcu(&conn->rcu, rxrpc_destroy_connection);
+	call_rcu_flush(&conn->rcu, rxrpc_destroy_connection);
 }
 
 /*

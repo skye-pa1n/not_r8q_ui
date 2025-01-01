@@ -2,7 +2,7 @@
 #
 # Makefile for the kernel security code
 #
-subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Os
+
 obj-$(CONFIG_KEYS)			+= keys/
 subdir-$(CONFIG_SECURITY_SELINUX)	+= selinux
 subdir-$(CONFIG_SECURITY_SMACK)		+= smack
@@ -37,10 +37,6 @@ obj-$(CONFIG_INTEGRITY)			+= integrity/
 
 # MST driver
 obj-$(CONFIG_MST_LDO)	  += mstdrv/
-
-# FIVE
-subdir-$(CONFIG_FIVE)			+= samsung/five
-obj-$(CONFIG_FIVE)			+= samsung/five/
 
 # PROCA module
 subdir-$(CONFIG_PROCA)		+= proca

@@ -1016,7 +1016,7 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			if (!tzbuf)
 				return -ENOMEM;
 			memset(tzbuf, 0, tzbuflen);
-			memcpy(tzbuf, req_buf + sizeof(uint32_t),
+			memcpy_toio((void __iomem *)tzbuf, req_buf + sizeof(uint32_t),
 				(sizeof(struct qseecom_key_generate_ireq) -
 				sizeof(uint32_t)));
 			dmac_flush_range(tzbuf, tzbuf + tzbuflen);
@@ -1038,7 +1038,7 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			if (!tzbuf)
 				return -ENOMEM;
 			memset(tzbuf, 0, tzbuflen);
-			memcpy(tzbuf, req_buf + sizeof(uint32_t),
+			memcpy_toio((void __iomem *)tzbuf, req_buf + sizeof(uint32_t),
 				(sizeof(struct qseecom_key_delete_ireq) -
 				sizeof(uint32_t)));
 			dmac_flush_range(tzbuf, tzbuf + tzbuflen);
@@ -1060,7 +1060,7 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			if (!tzbuf)
 				return -ENOMEM;
 			memset(tzbuf, 0, tzbuflen);
-			memcpy(tzbuf, req_buf + sizeof(uint32_t),
+			memcpy_toio((void __iomem *)tzbuf, req_buf + sizeof(uint32_t),
 				(sizeof(struct qseecom_key_select_ireq) -
 				sizeof(uint32_t)));
 			dmac_flush_range(tzbuf, tzbuf + tzbuflen);
@@ -1082,7 +1082,7 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			if (!tzbuf)
 				return -ENOMEM;
 			memset(tzbuf, 0, tzbuflen);
-			memcpy(tzbuf, req_buf + sizeof(uint32_t), (sizeof
+			memcpy_toio((void __iomem *)tzbuf, req_buf + sizeof(uint32_t), (sizeof
 				(struct qseecom_key_userinfo_update_ireq) -
 				sizeof(uint32_t)));
 			dmac_flush_range(tzbuf, tzbuf + tzbuflen);
@@ -4473,8 +4473,10 @@ static int __qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 	struct qseecom_send_modfd_cmd_req req;
 	struct qseecom_send_cmd_req send_cmd_req;
 	void *origin_req_buf_kvirt, *origin_rsp_buf_kvirt;
+	u32 tzbuflen;
 	phys_addr_t pa;
 	u8 *va = NULL;
+	struct qtee_shm shm = {0};
 
 	ret = copy_from_user(&req, argp, sizeof(req));
 	if (ret) {
@@ -4506,11 +4508,11 @@ static int __qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 				(uintptr_t)req.resp_buf);
 
 	/* Allocate kernel buffer for request and response*/
-	ret = __qseecom_alloc_coherent_buf(req.cmd_req_len + req.resp_len,
-					&va, &pa);
-	if (ret) {
-		pr_err("Failed to allocate coherent buf, ret %d\n", ret);
-		return ret;
+	tzbuflen = PAGE_ALIGN(req.cmd_req_len + req.resp_len);
+	va = __qseecom_alloc_tzbuf(tzbuflen, &pa, &shm);
+	if (!va) {
+		pr_err("error allocating in buffer\n");
+		return -ENOMEM;
 	}
 
 	req.cmd_req_buf = va;
@@ -4527,7 +4529,11 @@ static int __qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 		ret = __qseecom_update_cmd_buf(&req, false, data);
 		if (ret)
 			goto out;
+
+		dmac_flush_range(req.cmd_req_buf, req.cmd_req_buf + tzbuflen);
 		ret = __qseecom_send_cmd(data, &send_cmd_req, true);
+		dmac_flush_range(req.cmd_req_buf, req.cmd_req_buf + tzbuflen);
+
 		if (ret)
 			goto out;
 		ret = __qseecom_update_cmd_buf(&req, true, data);
@@ -4537,7 +4543,11 @@ static int __qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 		ret = __qseecom_update_cmd_buf_64(&req, false, data);
 		if (ret)
 			goto out;
+
+		dmac_flush_range(req.cmd_req_buf, req.cmd_req_buf + tzbuflen);
 		ret = __qseecom_send_cmd(data, &send_cmd_req, true);
+		dmac_flush_range(req.cmd_req_buf, req.cmd_req_buf + tzbuflen);
+
 		if (ret)
 			goto out;
 		ret = __qseecom_update_cmd_buf_64(&req, true, data);
@@ -4551,8 +4561,7 @@ static int __qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 
 out:
 	if (req.cmd_req_buf)
-		__qseecom_free_coherent_buf(req.cmd_req_len + req.resp_len,
-			req.cmd_req_buf, (phys_addr_t)send_cmd_req.cmd_req_buf);
+		__qseecom_free_tzbuf(&shm);
 
 	return ret;
 }
@@ -6742,7 +6751,7 @@ static int qseecom_wipe_key(struct qseecom_dev_handle *data,
 	struct qseecom_wipe_key_req wipe_key_req;
 	struct qseecom_key_delete_ireq delete_key_ireq;
 	struct qseecom_key_select_ireq clear_key_ireq;
-	int32_t entries = 0;
+	uint32_t entries = 0;
 
 	ret = copy_from_user(&wipe_key_req, argp, sizeof(wipe_key_req));
 	if (ret) {

@@ -237,6 +237,7 @@ static void nohz_full_kick_func(struct irq_work *work)
 
 static DEFINE_PER_CPU(struct irq_work, nohz_full_kick_work) = {
 	.func = nohz_full_kick_func,
+	.flags = ATOMIC_INIT(IRQ_WORK_HARD_IRQ),
 };
 
 /*
@@ -1078,6 +1079,7 @@ ktime_t tick_nohz_get_sleep_length(ktime_t *delta_next)
 
 	return ktime_sub(next_event, now);
 }
+EXPORT_SYMBOL_GPL(tick_nohz_get_sleep_length);
 
 /**
  * tick_nohz_get_idle_calls_cpu - return the current idle calls counter value
@@ -1268,16 +1270,16 @@ void tick_irq_enter(void)
  * High resolution timer specific code
  */
 #ifdef CONFIG_HIGH_RES_TIMERS
-static void wakeup_user(void)
-{
-	unsigned long jiffy_gap;
+static void (*wake_callback)(void);
 
-	jiffy_gap = jiffies - rq_info.def_timer_last_jiffy;
-	if (jiffy_gap >= rq_info.def_timer_jiffies) {
-		rq_info.def_timer_last_jiffy = jiffies;
-		queue_work(rq_wq, &rq_info.def_timer_work);
-	}
+void register_tick_sched_wakeup_callback(void (*cb)(void))
+{
+	if (!wake_callback)
+		wake_callback = cb;
+	else
+		pr_warn("tick-sched wake cb already exists; skipping.\n");
 }
+EXPORT_SYMBOL_GPL(register_tick_sched_wakeup_callback);
 
 /*
  * We rearm the timer until we get disabled by the idle code.
@@ -1298,12 +1300,12 @@ static enum hrtimer_restart tick_sched_timer(struct hrtimer *timer)
 	 */
 	if (regs) {
 		tick_sched_handle(ts, regs);
-		if (rq_info.init == 1 &&
+		if (rq_info.init == 1 && wake_callback &&
 				tick_do_timer_cpu == smp_processor_id()) {
 			/*
 			 * wakeup user if needed
 			 */
-			wakeup_user();
+			wake_callback();
 		}
 	}
 	else

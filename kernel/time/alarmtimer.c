@@ -407,7 +407,7 @@ static int alarmtimer_suspend(struct device *dev)
 		pr_info("alarmtimer suspending blocked by %ps\n", min_alarm->function);
 		log_suspend_abort_reason("alarmtimer suspending blocked by %ps\n", min_alarm->function);
 #endif
-		__pm_wakeup_event(ws, ktime_to_ms(min) + 10);
+		__pm_wakeup_event(ws, ktime_to_ms(min) + 1);
 		return -EBUSY;
 	}
 
@@ -942,9 +942,9 @@ static int alarm_timer_nsleep(const clockid_t which_clock, int flags,
 	if (flags == TIMER_ABSTIME)
 		return -ERESTARTNOHAND;
 
-	restart->fn = alarm_timer_nsleep_restart;
 	restart->nanosleep.clockid = type;
 	restart->nanosleep.expires = exp;
+	set_restart_fn(restart, alarm_timer_nsleep_restart);
 	return ret;
 }
 

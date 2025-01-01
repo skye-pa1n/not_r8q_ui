@@ -16,6 +16,7 @@
 #include <linux/spinlock.h>
 #include <linux/seqlock.h>
 #include <linux/atomic.h>
+#include <linux/android_kabi.h>
 
 struct super_block;
 struct vfsmount;
@@ -71,10 +72,11 @@ struct vfsmount {
 	struct mount *bp_mount;	/* pointer to mount*/
 #endif
 	int mnt_flags;
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_RESERVE(3);
+	ANDROID_KABI_RESERVE(4);
 	void *data;
-#if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
-	u64 android_kabi_reserved4;
-#endif
 } __randomize_layout;
 
 struct file; /* forward dec */

@@ -652,6 +652,21 @@ config VMAP_LAZY_PURGING_FACTOR
 	  single attempt. For 32-bit in order to reduce fragmentation
 	  of vmalloc space, we decrease the default value to "8".
 
+config MM_EVENT_STAT
+	bool "Track per-process MM event"
+	depends on MMU
+	help
+	  This option enables per-process mm event stat(e.g., fault, reclaim,
+	  compaction and so on ) with some interval(Default is 0.5sec).
+	  Admin can see the stat from trace file via debugfs(e.g.,
+	  /sys/kernel/debug/tracing/trace)
+
+	  It includes max/average memory allocation latency for the interval
+	  as well as event count so that admin can see what happens in VM side
+	  (how many each event happens and how much processes spent time for
+	  the MM event). If it's too large, that would be not good situation.
+
+	  System can dump the trace into bugreport when user allows the dump.
 
 config GENERIC_EARLY_IOREMAP
 	bool
@@ -859,6 +874,32 @@ config MAX_DIRTY_THRESH_PAGES
 	  This value is the upper bound of VM dirty-thresh. (0 means no limit.)
 	  It is only effective when dirty_ratio is used.
 	  (Setting dirty_bytes disables this option.)
+
+# multi-gen LRU {
+config LRU_GEN
+	bool "Multi-Gen LRU"
+	depends on MMU
+	# the following options can use up the spare bits in page flags
+	depends on !MAXSMP && (64BIT || !SPARSEMEM || SPARSEMEM_VMEMMAP)
+	help
+	  A high performance LRU implementation to overcommit memory. See
+	  Documentation/admin-guide/mm/multigen_lru.rst for details.
+
+config LRU_GEN_ENABLED
+	bool "Enable by default"
+	depends on LRU_GEN
+	help
+	  This option enables the multi-gen LRU by default.
+
+config LRU_GEN_STATS
+	bool "Full stats for debugging"
+	depends on LRU_GEN
+	help
+	  Do not enable this option unless you plan to look at historical stats
+	  from evicted generations for debugging purpose.
+
+	  This option has a per-memcg and per-node memory overhead.
+# }
 
 endmenu
 

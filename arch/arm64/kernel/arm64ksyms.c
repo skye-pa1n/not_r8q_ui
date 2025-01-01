@@ -30,6 +30,13 @@
 #include <asm/checksum.h>
 
 	/* caching functions */
-EXPORT_SYMBOL(__dma_inv_area);
-EXPORT_SYMBOL(__dma_clean_area);
-EXPORT_SYMBOL(__dma_flush_area);
+EXPORT_SYMBOL_GPL(__dma_inv_area);
+EXPORT_SYMBOL_GPL(__dma_clean_area);
+EXPORT_SYMBOL_GPL(__dma_flush_area);
+EXPORT_SYMBOL_GPL(__flush_dcache_area);
+
+EXPORT_SYMBOL_GPL(__bss_stop);
+EXPORT_SYMBOL_GPL(__per_cpu_start);
+EXPORT_SYMBOL_GPL(__per_cpu_end);
+EXPORT_SYMBOL_GPL(_sdata);
+EXPORT_SYMBOL_GPL(cpu_do_idle);

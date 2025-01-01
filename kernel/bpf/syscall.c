@@ -662,8 +662,6 @@ static int map_lookup_elem(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *value, *ptr;
-	u8 key_onstack[SZ_16] __aligned(sizeof(long));
-	u8 value_onstack[SZ_64] __aligned(sizeof(long));
 	u32 value_size;
 	struct fd f;
 	int err;
@@ -681,18 +679,10 @@ static int map_lookup_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	if (map->key_size <= sizeof(key_onstack)) {
-		key = key_onstack;
-		if (copy_from_user(key, ukey, map->key_size)) {
-			err = -EFAULT;
-			goto err_put;
-		}
-	} else {
-		key = memdup_user(ukey, map->key_size);
-		if (IS_ERR(key)) {
-			err = PTR_ERR(key);
-			goto err_put;
-		}
+	key = memdup_user(ukey, map->key_size);
+	if (IS_ERR(key)) {
+		err = PTR_ERR(key);
+		goto err_put;
 	}
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
@@ -705,13 +695,9 @@ static int map_lookup_elem(union bpf_attr *attr)
 		value_size = map->value_size;
 
 	err = -ENOMEM;
-	if (value_size <= sizeof(value_onstack)) {
-		value = value_onstack;
-	} else {
-		value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
-		if (!value)
-			goto free_key;
-	}
+	value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+	if (!value)
+		goto free_key;
 
 	if (bpf_map_is_dev_bound(map)) {
 		err = bpf_map_offload_lookup_elem(map, key, value);
@@ -758,11 +744,9 @@ done:
 	err = 0;
 
 free_value:
-	if (value != value_onstack)
-		kfree(value);
+	kfree(value);
 free_key:
-	if (key != key_onstack)
-		kfree(key);
+	kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -788,8 +772,6 @@ static int map_update_elem(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *value;
-	u8 key_onstack[SZ_16] __aligned(sizeof(long));
-	u8 value_onstack[SZ_64] __aligned(sizeof(long));
 	u32 value_size;
 	struct fd f;
 	int err;
@@ -807,18 +789,10 @@ static int map_update_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	if (map->key_size <= sizeof(key_onstack)) {
-		key = key_onstack;
-		if (copy_from_user(key, ukey, map->key_size)) {
-			err = -EFAULT;
-			goto err_put;
-		}
-	} else {
-		key = memdup_user(ukey, map->key_size);
-		if (IS_ERR(key)) {
-			err = PTR_ERR(key);
-			goto err_put;
-		}
+	key = memdup_user(ukey, map->key_size);
+	if (IS_ERR(key)) {
+		err = PTR_ERR(key);
+		goto err_put;
 	}
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
@@ -828,14 +802,10 @@ static int map_update_elem(union bpf_attr *attr)
 	else
 		value_size = map->value_size;
 
-	if (value_size <= sizeof(value_onstack)) {
-		value = value_onstack;
-	} else {
-		err = -ENOMEM;
-		value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
-		if (!value)
-			goto free_key;
-	}
+	err = -ENOMEM;
+	value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+	if (!value)
+		goto free_key;
 
 	err = -EFAULT;
 	if (copy_from_user(value, uvalue, value_size) != 0)
@@ -886,11 +856,9 @@ static int map_update_elem(union bpf_attr *attr)
 	maybe_wait_bpf_programs(map);
 out:
 free_value:
-	if (value != value_onstack)
-		kfree(value);
+	kfree(value);
 free_key:
-	if (key != key_onstack)
-		kfree(key);
+	kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -905,7 +873,6 @@ static int map_delete_elem(union bpf_attr *attr)
 	struct bpf_map *map;
 	struct fd f;
 	void *key;
-	u8 key_onstack[SZ_16] __aligned(sizeof(long));
 	int err;
 
 	if (CHECK_ATTR(BPF_MAP_DELETE_ELEM))
@@ -921,18 +888,10 @@ static int map_delete_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	if (map->key_size <= sizeof(key_onstack)) {
-		key = key_onstack;
-		if (copy_from_user(key, ukey, map->key_size)) {
-			err = -EFAULT;
-			goto err_put;
-		}
-	} else {
-		key = memdup_user(ukey, map->key_size);
-		if (IS_ERR(key)) {
-			err = PTR_ERR(key);
-			goto err_put;
-		}
+	key = memdup_user(ukey, map->key_size);
+	if (IS_ERR(key)) {
+		err = PTR_ERR(key);
+		goto err_put;
 	}
 
 	if (bpf_map_is_dev_bound(map)) {
@@ -949,8 +908,7 @@ static int map_delete_elem(union bpf_attr *attr)
 	preempt_enable();
 	maybe_wait_bpf_programs(map);
 out:
-	if (key != key_onstack)
-		kfree(key);
+	kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -966,8 +924,6 @@ static int map_get_next_key(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *next_key;
-	u8 key_onstack[SZ_16] __aligned(sizeof(long));
-	u8 next_key_onstack[SZ_64] __aligned(sizeof(long));
 	struct fd f;
 	int err;
 
@@ -985,31 +941,19 @@ static int map_get_next_key(union bpf_attr *attr)
 	}
 
 	if (ukey) {
-		if (map->key_size <= sizeof(key_onstack)) {
-			key = key_onstack;
-			if (copy_from_user(key, ukey, map->key_size)) {
-				err = -EFAULT;
-				goto err_put;
-			}
-		} else {
-			key = memdup_user(ukey, map->key_size);
-			if (IS_ERR(key)) {
-				err = PTR_ERR(key);
-				goto err_put;
-			}
+		key = memdup_user(ukey, map->key_size);
+		if (IS_ERR(key)) {
+			err = PTR_ERR(key);
+			goto err_put;
 		}
 	} else {
 		key = NULL;
 	}
 
 	err = -ENOMEM;
-	if (map->key_size <= sizeof(next_key_onstack)) {
-		next_key = next_key_onstack;
-	} else {
-		next_key = kmalloc(map->key_size, GFP_USER);
-		if (!next_key)
-			goto free_key;
-	}
+	next_key = kmalloc(map->key_size, GFP_USER);
+	if (!next_key)
+		goto free_key;
 
 	if (bpf_map_is_dev_bound(map)) {
 		err = bpf_map_offload_get_next_key(map, key, next_key);
@@ -1030,11 +974,9 @@ out:
 	err = 0;
 
 free_next_key:
-	if (next_key != next_key_onstack)
-		kfree(next_key);
+	kfree(next_key);
 free_key:
-	if (key != key_onstack)
-		kfree(key);
+	kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -1421,14 +1363,17 @@ static int bpf_prog_load(union bpf_attr *attr)
 	int err;
 	char license[128];
 	bool is_gpl;
-	pid_t pid;
-	struct task_struct* task;
 
 	if (CHECK_ATTR(BPF_PROG_LOAD))
 		return -EINVAL;
 
-	if (attr->prog_flags & ~BPF_F_STRICT_ALIGNMENT)
+	if (attr->prog_flags & ~(BPF_F_STRICT_ALIGNMENT | BPF_F_ANY_ALIGNMENT))
 		return -EINVAL;
+
+	if (!IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) &&
+	    (attr->prog_flags & BPF_F_ANY_ALIGNMENT) &&
+	    !capable(CAP_SYS_ADMIN))
+		return -EPERM;
 
 	/* copy eBPF program license from user space */
 	if (strncpy_from_user(license, u64_to_user_ptr(attr->license),
@@ -1533,11 +1478,6 @@ static int bpf_prog_load(union bpf_attr *attr)
 	err = bpf_prog_new_fd(prog);
 	if (err < 0)
 		bpf_prog_put(prog);
-
-	task = current;
-	pid = task_pid_nr(task);
-	sched_setaffinity(pid, cpu_lp_mask);
-
 	return err;
 
 free_used_maps:
@@ -1968,7 +1908,8 @@ static const struct bpf_map *bpf_map_from_imm(const struct bpf_prog *prog,
 	return NULL;
 }
 
-static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog)
+static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog,
+					      const struct cred *f_cred)
 {
 	const struct bpf_map *map;
 	struct bpf_insn *insns;
@@ -1990,7 +1931,7 @@ static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog)
 		    insns[i].code == (BPF_JMP | BPF_CALL_ARGS)) {
 			if (insns[i].code == (BPF_JMP | BPF_CALL_ARGS))
 				insns[i].code = BPF_JMP | BPF_CALL;
-			if (!bpf_dump_raw_ok())
+			if (!bpf_dump_raw_ok(f_cred))
 				insns[i].imm = 0;
 			continue;
 		}
@@ -2007,7 +1948,7 @@ static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog)
 			continue;
 		}
 
-		if (!bpf_dump_raw_ok() &&
+		if (!bpf_dump_raw_ok(f_cred) &&
 		    imm == (unsigned long)prog->aux) {
 			insns[i].imm = 0;
 			insns[i + 1].imm = 0;
@@ -2018,7 +1959,8 @@ static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog)
 	return insns;
 }
 
-static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
+static int bpf_prog_get_info_by_fd(struct file *file,
+				   struct bpf_prog *prog,
 				   const union bpf_attr *attr,
 				   union bpf_attr __user *uattr)
 {
@@ -2075,11 +2017,11 @@ static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
 		struct bpf_insn *insns_sanitized;
 		bool fault;
 
-		if (prog->blinded && !bpf_dump_raw_ok()) {
+		if (prog->blinded && !bpf_dump_raw_ok(file->f_cred)) {
 			info.xlated_prog_insns = 0;
 			goto done;
 		}
-		insns_sanitized = bpf_insn_prepare_dump(prog);
+		insns_sanitized = bpf_insn_prepare_dump(prog, file->f_cred);
 		if (!insns_sanitized)
 			return -ENOMEM;
 		uinsns = u64_to_user_ptr(info.xlated_prog_insns);
@@ -2113,7 +2055,7 @@ static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
 	}
 
 	if (info.jited_prog_len && ulen) {
-		if (bpf_dump_raw_ok()) {
+		if (bpf_dump_raw_ok(file->f_cred)) {
 			uinsns = u64_to_user_ptr(info.jited_prog_insns);
 			ulen = min_t(u32, info.jited_prog_len, ulen);
 
@@ -2148,7 +2090,7 @@ static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
 	ulen = info.nr_jited_ksyms;
 	info.nr_jited_ksyms = prog->aux->func_cnt;
 	if (info.nr_jited_ksyms && ulen) {
-		if (bpf_dump_raw_ok()) {
+		if (bpf_dump_raw_ok(file->f_cred)) {
 			u64 __user *user_ksyms;
 			ulong ksym_addr;
 			u32 i;
@@ -2172,7 +2114,7 @@ static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
 	ulen = info.nr_jited_func_lens;
 	info.nr_jited_func_lens = prog->aux->func_cnt;
 	if (info.nr_jited_func_lens && ulen) {
-		if (bpf_dump_raw_ok()) {
+		if (bpf_dump_raw_ok(file->f_cred)) {
 			u32 __user *user_lens;
 			u32 func_len, i;
 
@@ -2197,7 +2139,8 @@ done:
 	return 0;
 }
 
-static int bpf_map_get_info_by_fd(struct bpf_map *map,
+static int bpf_map_get_info_by_fd(struct file *file,
+				  struct bpf_map *map,
 				  const union bpf_attr *attr,
 				  union bpf_attr __user *uattr)
 {
@@ -2239,7 +2182,8 @@ static int bpf_map_get_info_by_fd(struct bpf_map *map,
 	return 0;
 }
 
-static int bpf_btf_get_info_by_fd(struct btf *btf,
+static int bpf_btf_get_info_by_fd(struct file *file,
+				  struct btf *btf,
 				  const union bpf_attr *attr,
 				  union bpf_attr __user *uattr)
 {
@@ -2271,13 +2215,13 @@ static int bpf_obj_get_info_by_fd(const union bpf_attr *attr,
 		return -EBADFD;
 
 	if (f.file->f_op == &bpf_prog_fops)
-		err = bpf_prog_get_info_by_fd(f.file->private_data, attr,
+		err = bpf_prog_get_info_by_fd(f.file, f.file->private_data, attr,
 					      uattr);
 	else if (f.file->f_op == &bpf_map_fops)
-		err = bpf_map_get_info_by_fd(f.file->private_data, attr,
+		err = bpf_map_get_info_by_fd(f.file, f.file->private_data, attr,
 					     uattr);
 	else if (f.file->f_op == &btf_fops)
-		err = bpf_btf_get_info_by_fd(f.file->private_data, attr, uattr);
+		err = bpf_btf_get_info_by_fd(f.file, f.file->private_data, attr, uattr);
 	else
 		err = -EINVAL;
 

@@ -115,7 +115,7 @@
 #define UART_CORE2X_VOTE	(5000)
 #define UART_CONSOLE_CORE2X_VOTE (960)
 
-#define WAKEBYTE_TIMEOUT_MSEC	(2000)
+#define WAKEBYTE_TIMEOUT_MSEC	(100)
 #define WAIT_XFER_MAX_ITER	(2)
 #define WAIT_XFER_MAX_TIMEOUT_US	(10000)
 #define WAIT_XFER_MIN_TIMEOUT_US	(9000)
@@ -307,7 +307,7 @@ static int msm_geni_serial_spinlocked(struct uart_port *uport)
 static void msm_geni_serial_enable_interrupts(struct uart_port *uport)
 {
 	unsigned int geni_m_irq_en, geni_s_irq_en;
-	unsigned int dma_m_irq_en, dma_s_irq_en;
+	unsigned int dma_m_irq_en = 0, dma_s_irq_en = 0;
 	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
 
 	geni_m_irq_en = geni_read_reg_nolog(uport->membase,
@@ -342,7 +342,7 @@ static void msm_geni_serial_enable_interrupts(struct uart_port *uport)
 static bool msm_serial_try_disable_interrupts(struct uart_port *uport)
 {
 	unsigned int geni_m_irq_en, geni_s_irq_en;
-	unsigned int dma_m_irq_en, dma_s_irq_en;
+	unsigned int dma_m_irq_en = 0, dma_s_irq_en = 0;
 	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
 
 	/*
@@ -2088,8 +2088,7 @@ static bool handle_rx_dma_xfer(u32 s_irq_status, struct uart_port *uport)
 			goto exit;
 		}
 
-		if (dma_rx_status & UART_DMA_RX_ERRS) {
-			if (dma_rx_status & UART_DMA_RX_PARITY_ERR)
+		if (dma_rx_status & UART_DMA_RX_ERRS && (dma_rx_status & UART_DMA_RX_PARITY_ERR)) {
 				uport->icount.parity++;
 				IPC_LOG_MSG(msm_port->ipc_log_misc,
 							"%s.Rx Errors. 0x%x parity:%d\n",
@@ -2246,13 +2245,14 @@ static void msm_geni_serial_handle_isr(struct uart_port *uport,
 
 #if defined(CONFIG_MSM_BT_POWER)
 		if (m_irq_status || s_irq_status ||
-			dma_tx_status || dma_rx_status)
+			dma_tx_status || dma_rx_status) {
 			IPC_LOG_MSG(msm_port->ipc_log_irqstatus,
 			"%s: sirq:0x%x mirq:0x%x dma_txirq:0x%x dma_rxirq:0x%x\n",
 			__func__, s_irq_status, m_irq_status,
 			dma_tx_status, dma_rx_status);
 			if (m_irq_status & (M_CMD_CANCEL_EN | M_CMD_ABORT_EN))
 				m_cmd_done = true;
+			}
 #endif
 
 		if (dma_tx_status) {

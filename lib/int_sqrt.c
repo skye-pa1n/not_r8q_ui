@@ -27,20 +27,21 @@ inline unsigned long int_sqrt(unsigned long x)
 
 	place = 1UL << (BITS_PER_LONG - 2);
 
-	do {
+	do{
 		place >>= 2;
-	} while(place > x);
+	}while(place > x);
 
 	do {
 		tmp = root + place;
 		root >>= 1;
 
-		if (x >= tmp) {
+		if (x >= tmp)
+		{
 			x -= tmp;
 			root += place;
 		}
 		place >>= 2;
-	} while (place != 0);
+	}while (place != 0);
 
 	return root;
 }

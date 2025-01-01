@@ -2,7 +2,7 @@
 #
 # Cryptographic API
 #
-subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-visibility -Wno-unused-function -Wno-enum-compare -O3
+
 ifeq ($(CONFIG_CRYPTO_FIPS), y)
 #ccflags-y += -DCONFIG_CRYPTO_FIPS_FUNC_TEST
 endif
@@ -107,6 +107,8 @@ obj-$(CONFIG_CRYPTO_SM3) += sm3_generic.o
 obj-$(CONFIG_CRYPTO_WP512) += wp512.o
 CFLAGS_wp512.o := $(call cc-option,-fno-schedule-insns)  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=79149
 obj-$(CONFIG_CRYPTO_TGR192) += tgr192.o
+obj-$(CONFIG_CRYPTO_BLAKE2S) += blake2s_generic.o
+obj-$(CONFIG_CRYPTO_BLAKE2B) += blake2b_generic.o
 obj-$(CONFIG_CRYPTO_GF128MUL) += gf128mul.o
 obj-$(CONFIG_CRYPTO_CFB) += cfb.o
 obj-$(CONFIG_CRYPTO_PCBC) += pcbc.o
@@ -170,6 +172,7 @@ ecdh_generic-y := ecc.o
 ecdh_generic-y += ecdh.o
 ecdh_generic-y += ecdh_helper.o
 obj-$(CONFIG_CRYPTO_ECDH) += ecdh_generic.o
+obj-$(CONFIG_CRYPTO_CURVE25519) += curve25519-generic.o
 
 #
 # generic algorithms and the async_tx api

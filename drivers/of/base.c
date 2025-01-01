@@ -145,22 +145,6 @@ static void __of_free_phandle_cache(void)
 	phandle_cache = NULL;
 }
 
-int of_free_phandle_cache(void)
-{
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&devtree_lock, flags);
-
-	__of_free_phandle_cache();
-
-	raw_spin_unlock_irqrestore(&devtree_lock, flags);
-
-	return 0;
-}
-#if !defined(CONFIG_MODULES)
-late_initcall_sync(of_free_phandle_cache);
-#endif
-
 /*
  * Caller must hold devtree_lock.
  */
@@ -248,17 +232,20 @@ static struct property *__of_find_property(const struct device_node *np,
 	struct property *pp;
 
 	if (!np)
-		return NULL;
+		goto notfound;
 
 	for (pp = np->properties; pp; pp = pp->next) {
 		if (of_prop_cmp(pp->name, name) == 0) {
 			if (lenp)
 				*lenp = pp->length;
-			break;
+			return pp;
 		}
 	}
 
-	return pp;
+notfound:
+	if (lenp)
+		*lenp = 0;
+	return NULL;
 }
 
 struct property *of_find_property(const struct device_node *np,
@@ -1342,6 +1329,7 @@ int of_phandle_iterator_args(struct of_phandle_iterator *it,
 
 	return count;
 }
+EXPORT_SYMBOL_GPL(of_phandle_iterator_args);
 
 static int __of_parse_phandle_with_args(const struct device_node *np,
 					const char *list_name,

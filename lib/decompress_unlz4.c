@@ -115,6 +115,9 @@ STATIC inline int INIT unlz4(u8 *input, long in_len,
 				error("data corrupted");
 				goto exit_2;
 			}
+		} else if (size < 4) {
+			/* empty or end-of-file */
+			goto exit_3;
 		}
 
 		chunksize = get_unaligned_le32(inp);
@@ -128,6 +131,10 @@ STATIC inline int INIT unlz4(u8 *input, long in_len,
 			continue;
 		}
 
+		if (!fill && chunksize == 0) {
+			/* empty or end-of-file */
+			goto exit_3;
+		}
 
 		if (posp)
 			*posp += 4;
@@ -157,8 +164,11 @@ STATIC inline int INIT unlz4(u8 *input, long in_len,
 		chunksize = ret;
 #else
 		dest_len = uncomp_chunksize;
-
+#if defined(CONFIG_ARM64) && defined(CONFIG_KERNEL_MODE_NEON)
+		ret = LZ4_arm64_decompress_safe(inp, outp, chunksize, dest_len, false);
+#else
 		ret = LZ4_decompress_safe(inp, outp, chunksize, dest_len);
+#endif
 		dest_len = ret;
 #endif
 		if (ret < 0) {
@@ -187,6 +197,7 @@ STATIC inline int INIT unlz4(u8 *input, long in_len,
 		}
 	}
 
+exit_3:
 	ret = 0;
 exit_2:
 	if (!input)

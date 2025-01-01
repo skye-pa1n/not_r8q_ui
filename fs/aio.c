@@ -169,6 +169,7 @@ struct fsync_iocb {
 	struct file		*file;
 	struct work_struct	work;
 	bool			datasync;
+	struct cred		*creds;
 };
 
 struct poll_iocb {
@@ -922,16 +923,13 @@ static bool __get_reqs_available(struct kioctx *ctx)
 	local_irq_save(flags);
 	kcpu = this_cpu_ptr(ctx->cpu);
 	if (!kcpu->reqs_available) {
-		int old, avail = atomic_read(&ctx->reqs_available);
+		int avail = atomic_read(&ctx->reqs_available);
 
 		do {
 			if (avail < ctx->req_batch)
 				goto out;
-
-			old = avail;
-			avail = atomic_cmpxchg(&ctx->reqs_available,
-					       avail, avail - ctx->req_batch);
-		} while (avail != old);
+		} while (!atomic_try_cmpxchg(&ctx->reqs_available,
+					     &avail, avail - ctx->req_batch));
 
 		kcpu->reqs_available += ctx->req_batch;
 	}
@@ -1580,8 +1578,11 @@ static ssize_t aio_write(struct kiocb *req, const struct iocb *iocb,
 static void aio_fsync_work(struct work_struct *work)
 {
 	struct aio_kiocb *iocb = container_of(work, struct aio_kiocb, fsync.work);
+	const struct cred *old_cred = override_creds(iocb->fsync.creds);
 
 	iocb->ki_res.res = vfs_fsync(iocb->fsync.file, iocb->fsync.datasync);
+	revert_creds(old_cred);
+	put_cred(iocb->fsync.creds);
 	iocb_put(iocb);
 }
 
@@ -1594,6 +1595,10 @@ static int aio_fsync(struct fsync_iocb *req, const struct iocb *iocb,
 
 	if (unlikely(!req->file->f_op->fsync))
 		return -EINVAL;
+
+	req->creds = prepare_creds();
+	if (!req->creds)
+		return -ENOMEM;
 
 	req->datasync = datasync;
 	INIT_WORK(&req->work, aio_fsync_work);

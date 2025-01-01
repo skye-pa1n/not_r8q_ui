@@ -7,7 +7,6 @@
 #include <net/ipv6.h>
 #include <net/addrconf.h>
 #include <net/ip.h>
-#include "../../drivers/esoc/esoc.h"
 
 /* if ipv6 module registers this function is used by xfrm to force all
  * sockets to relookup their nodes - this is fairly expensive, be
@@ -128,11 +127,12 @@ int inet6addr_validator_notifier_call_chain(unsigned long val, void *v)
 }
 EXPORT_SYMBOL(inet6addr_validator_notifier_call_chain);
 
-static int eafnosupport_ipv6_dst_lookup(struct net *net, struct sock *u1,
-					struct dst_entry **u2,
-					struct flowi6 *u3)
+static struct dst_entry *eafnosupport_ipv6_dst_lookup_flow(struct net *net,
+							   const struct sock *sk,
+							   struct flowi6 *fl6,
+							   const struct in6_addr *final_dst)
 {
-	return -EAFNOSUPPORT;
+	return ERR_PTR(-EAFNOSUPPORT);
 }
 
 static struct fib6_table *eafnosupport_fib6_get_table(struct net *net, u32 id)
@@ -170,7 +170,7 @@ eafnosupport_ip6_mtu_from_fib6(struct fib6_info *f6i, struct in6_addr *daddr,
 }
 
 const struct ipv6_stub *ipv6_stub __read_mostly = &(struct ipv6_stub) {
-	.ipv6_dst_lookup   = eafnosupport_ipv6_dst_lookup,
+	.ipv6_dst_lookup_flow = eafnosupport_ipv6_dst_lookup_flow,
 	.fib6_get_table    = eafnosupport_fib6_get_table,
 	.fib6_table_lookup = eafnosupport_fib6_table_lookup,
 	.fib6_lookup       = eafnosupport_fib6_lookup,
@@ -226,12 +226,6 @@ void in6_dev_finish_destroy(struct inet6_dev *idev)
 	dev_put(dev);
 	if (!idev->dead) {
 		pr_warn("Freeing alive inet6 device %p\n", idev);
-
-#ifdef CONFIG_ESOC_MDM_4x
-		/* Do silent reset */
-		if (!!idev->mc_list)
-			 esoc_do_silentreset();
-#endif
 		return;
 	}
 	call_rcu(&idev->rcu, in6_dev_finish_destroy_rcu);

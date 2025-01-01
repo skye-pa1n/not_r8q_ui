@@ -66,7 +66,9 @@ static int raise_blk_irq(int cpu, struct request *rq)
 		data->func = trigger_softirq;
 		data->info = rq;
 		data->flags = 0;
-		return !!smp_call_function_single_async(cpu, data);
+
+		smp_call_function_single_async(cpu, data);
+		return 0;
 	}
 
 	return 1;

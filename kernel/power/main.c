@@ -16,6 +16,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
+#include <linux/syscalls.h>
 #ifdef CONFIG_SEC_PM
 #include <linux/input/qpnp-power-on.h>
 #include <linux/fb.h>
@@ -63,6 +64,19 @@ void unlock_system_sleep(void)
 	mutex_unlock(&system_transition_mutex);
 }
 EXPORT_SYMBOL_GPL(unlock_system_sleep);
+
+void ksys_sync_helper(void)
+{
+	ktime_t start;
+	long elapsed_msecs;
+
+	start = ktime_get();
+	ksys_sync();
+	elapsed_msecs = ktime_to_ms(ktime_sub(ktime_get(), start));
+	pr_info("Filesystems sync: %ld.%03ld seconds\n",
+		elapsed_msecs / MSEC_PER_SEC, elapsed_msecs % MSEC_PER_SEC);
+}
+EXPORT_SYMBOL_GPL(ksys_sync_helper);
 
 /* Routines for PM-transition notifications */
 
@@ -172,6 +186,8 @@ static ssize_t mem_sleep_store(struct kobject *kobj, struct kobj_attribute *attr
 	suspend_state_t state;
 	int error;
 
+	/* Don't allow userspace to select s2idle */
+	return n;
 	error = pm_autosleep_lock();
 	if (error)
 		return error;
@@ -551,6 +567,7 @@ static inline void pm_print_times_init(void) {}
 #endif /* CONFIG_PM_SLEEP_DEBUG */
 
 struct kobject *power_kobj;
+EXPORT_SYMBOL_GPL(power_kobj);
 
 /**
  * state - control system sleep states.
@@ -984,6 +1001,9 @@ static ssize_t pm_freeze_timeout_store(struct kobject *kobj,
 				       const char *buf, size_t n)
 {
 	unsigned long val;
+
+	if (IS_ENABLED(CONFIG_ANDROID))
+		return n;
 
 	if (kstrtoul(buf, 10, &val))
 		return -EINVAL;

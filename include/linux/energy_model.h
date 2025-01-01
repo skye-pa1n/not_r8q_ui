@@ -8,6 +8,7 @@
 #include <linux/sched/cpufreq.h>
 #include <linux/sched/topology.h>
 #include <linux/types.h>
+#include <linux/cpufreq.h>
 
 #ifdef CONFIG_ENERGY_MODEL
 /**
@@ -41,6 +42,22 @@ struct em_perf_domain {
 };
 
 #define EM_CPU_MAX_POWER 0xFFFF
+
+/*
+ * Increase resolution of energy estimation calculations for 64-bit
+ * architectures. The extra resolution improves decision made by EAS for the
+ * task placement when two Performance Domains might provide similar energy
+ * estimation values (w/o better resolution the values could be equal).
+ *
+ * We increase resolution only if we have enough bits to allow this increased
+ * resolution (i.e. 64-bit). The costs for increasing resolution when 32-bit
+ * are pretty high and the returns do not justify the increased costs.
+ */
+#ifdef CONFIG_64BIT
+#define em_scale_power(p) ((p) * 1000)
+#else
+#define em_scale_power(p) (p)
+#endif
 
 struct em_data_callback {
 	/**
@@ -79,7 +96,7 @@ int em_register_perf_domain(cpumask_t *span, unsigned int nr_states,
 static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 				unsigned long max_util, unsigned long sum_util)
 {
-	unsigned long freq, scale_cpu;
+	unsigned long freq, min_freq, scale_cpu;
 	struct em_cap_state *cs;
 	int i, cpu;
 
@@ -95,6 +112,9 @@ static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 	scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
 	cs = &pd->table[pd->nr_cap_states - 1];
 	freq = map_util_freq(max_util, cs->frequency, scale_cpu);
+	min_freq = cpufreq_quick_get_min(cpu);
+
+	freq = (freq > min_freq) ? freq : min_freq;
 
 	/*
 	 * Find the lowest capacity state of the Energy Model above the

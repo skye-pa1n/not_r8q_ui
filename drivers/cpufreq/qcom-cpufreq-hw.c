@@ -426,6 +426,8 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 
 		c->is_irq_requested = true;
 		c->is_irq_enabled = true;
+
+		sysfs_attr_init(&c->freq_limit_attr.attr);
 		c->freq_limit_attr.attr.name = "dcvsh_freq_limit";
 		c->freq_limit_attr.show = dcvsh_freq_limit_show;
 		c->freq_limit_attr.attr.mode = 0444;
@@ -931,14 +933,14 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	for_each_possible_cpu(cpu)
+		spin_lock_init(&qcom_cpufreq_counter[cpu].lock);
+
 	rc = cpufreq_register_driver(&cpufreq_qcom_hw_driver);
 	if (rc) {
 		dev_err(&pdev->dev, "CPUFreq HW driver failed to register\n");
 		return rc;
 	}
-
-	for_each_possible_cpu(cpu)
-		spin_lock_init(&qcom_cpufreq_counter[cpu].lock);
 
 	rc = register_cpu_cycle_counter_cb(&cycle_counter_cb);
 	if (rc) {

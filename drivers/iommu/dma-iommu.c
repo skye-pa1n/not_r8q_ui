@@ -341,6 +341,7 @@ int iommu_dma_reserve_iova(struct device *dev, dma_addr_t base,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(iommu_dma_reserve_iova);
 
 /*
  * Should be called prior to using dma-apis.
@@ -358,7 +359,7 @@ int iommu_dma_enable_best_fit_algo(struct device *dev)
 	iovad->best_fit = true;
 	return 0;
 }
-EXPORT_SYMBOL(iommu_dma_enable_best_fit_algo);
+EXPORT_SYMBOL_GPL(iommu_dma_enable_best_fit_algo);
 
 /**
  * dma_info_to_prot - Translate DMA API directions and attributes to IOMMU API
@@ -868,7 +869,7 @@ int iommu_dma_map_sg(struct device *dev, struct scatterlist *sg,
 	 * implementation - it knows better than we do.
 	 */
 	if (iommu_map_sg(domain, iova, sg, nents, prot) < iova_len) {
-		pr_err("DEBUG: Map failed for DMAADDR=0x%pad\n", iova);
+		pr_err("DEBUG: Map failed for DMAADDR=0x%llu\n", iova);
 		goto out_free_iova;
 	}
 

@@ -31,4 +31,4 @@ obj-$(CONFIG_DEVFREQ_GOV_STATICMAP)	+= governor_staticmap.o
 obj-$(CONFIG_PM_DEVFREQ_EVENT)		+= event/
 
 # DEVFREQ Boost
-obj-y		+= devfreq_boost.o
+obj-$(CONFIG_DEVFREQ_BOOST)		+= devfreq_boost.o

@@ -50,8 +50,10 @@ int panic_timeout = CONFIG_PANIC_TIMEOUT;
 EXPORT_SYMBOL_GPL(panic_timeout);
 
 ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
-
 EXPORT_SYMBOL(panic_notifier_list);
+
+void (*vendor_panic_cb)(u64 sp);
+EXPORT_SYMBOL_GPL(vendor_panic_cb);
 
 static long no_blink(int state)
 {
@@ -146,9 +148,8 @@ void panic(const char *fmt, ...)
 	bool _crash_kexec_post_notifiers = crash_kexec_post_notifiers;
 
 	sec_debug_store_extc_idx(false);
-
-#ifdef CONFIG_QCOM_WATCHDOG_V2
 	/*To prevent watchdog reset during panic handling. */
+#ifdef CONFIG_QCOM_WATCHDOG_V2
 	emerg_pet_watchdog();
 #endif
 
@@ -191,6 +192,8 @@ void panic(const char *fmt, ...)
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 	dump_stack_minidump(0);
+	if (vendor_panic_cb)
+		vendor_panic_cb(0);
 	pr_emerg("Kernel panic - not syncing: %s\n", buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*

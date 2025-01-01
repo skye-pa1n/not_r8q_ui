@@ -35,6 +35,7 @@
 #ifdef CONFIG_DYNAMIC_FTRACE
 
 int ftrace_arch_code_modify_prepare(void)
+    __acquires(&text_mutex)
 {
 	mutex_lock(&text_mutex);
 	set_kernel_text_rw();
@@ -43,6 +44,7 @@ int ftrace_arch_code_modify_prepare(void)
 }
 
 int ftrace_arch_code_modify_post_process(void)
+    __releases(&text_mutex)
 {
 	set_all_modules_text_ro();
 	set_kernel_text_ro();
@@ -279,7 +281,7 @@ int ftrace_update_ftrace_func(ftrace_func_t func)
 	return ret;
 }
 
-static int is_ftrace_caller(unsigned long ip)
+static nokprobe_inline int is_ftrace_caller(unsigned long ip)
 {
 	if (ip == ftrace_update_func)
 		return 1;
@@ -324,6 +326,7 @@ int ftrace_int3_handler(struct pt_regs *regs)
 
 	return 0;
 }
+NOKPROBE_SYMBOL(ftrace_int3_handler);
 
 static int ftrace_write(unsigned long ip, const char *val, int size)
 {

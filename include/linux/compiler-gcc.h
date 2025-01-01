@@ -12,6 +12,12 @@
 
 #if GCC_VERSION < 40600
 # error Sorry, your compiler is too old - please upgrade it.
+#elif defined(CONFIG_ARM64) && GCC_VERSION < 50100
+/*
+ * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63293
+ * https://lore.kernel.org/r/20210107111841.GN1551@shell.armlinux.org.uk
+ */
+# error Sorry, your version of GCC is too old - please use 5.1 or newer.
 #endif
 
 /*
@@ -198,6 +204,11 @@
 
 #if !defined(__no_sanitize_address)
 #define __no_sanitize_address
+#endif
+
+#if __GNUC__ >= 5
+/* Avoid reordering a top level statement */
+#define __noreorder    __attribute__((no_reorder))
 #endif
 
 /*

@@ -291,7 +291,7 @@ static unsigned int prepare_minidump_segments(struct ramdump_segment *rd_segs,
 			rd_segs++;
 			val_segs++;
 		} else {
-			*ss_valid_seg_cnt--;
+			(*ss_valid_seg_cnt)--;
 		}
 
 		region_info++;
@@ -1249,7 +1249,11 @@ int pil_boot(struct pil_desc *desc)
 	/* Reinitialize for new image */
 	pil_release_mmap(desc);
 
-	down_read(&pil_pm_rwsem);
+	if (!down_read_trylock(&pil_pm_rwsem)) {
+		pil_info(desc, "Aborting suspend to load image\n");
+		pm_system_wakeup();
+		down_read(&pil_pm_rwsem);
+	}
 	snprintf(fw_name, sizeof(fw_name), "%s.mdt", desc->fw_name);
 	ret = request_firmware(&fw, fw_name, desc->dev);
 	if (ret) {
