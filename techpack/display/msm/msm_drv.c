@@ -840,12 +840,12 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		}
 	}
 
+	drm_mode_config_reset(ddev);
+
 	ret = drm_dev_register(ddev, 0);
 	if (ret)
 		goto fail;
 	priv->registered = true;
-
-	drm_mode_config_reset(ddev);
 
 	reg_log_dump(__func__, __LINE__);
 	if (kms && kms->funcs && kms->funcs->cont_splash_config) {
@@ -1137,6 +1137,7 @@ static irqreturn_t msm_irq(int irq, void *arg)
 	struct drm_device *dev = arg;
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+	BUG_ON(!kms);
 	return kms->funcs->irq(kms);
 }
 
@@ -1144,6 +1145,7 @@ static void msm_irq_preinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+	BUG_ON(!kms);
 	kms->funcs->irq_preinstall(kms);
 }
 
@@ -1151,6 +1153,7 @@ static int msm_irq_postinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+	BUG_ON(!kms);
 	return kms->funcs->irq_postinstall(kms);
 }
 
@@ -1158,6 +1161,7 @@ static void msm_irq_uninstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+	BUG_ON(!kms);
 	kms->funcs->irq_uninstall(kms);
 }
 

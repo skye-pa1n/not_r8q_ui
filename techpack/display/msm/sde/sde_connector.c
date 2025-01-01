@@ -578,7 +578,7 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 	struct dsi_display *dsi_display;
 	struct dsi_backlight_config *bl_config;
 	int rc = 0;
-
+	struct backlight_device *bl_dev;
 	if (!c_conn) {
 		SDE_ERROR("Invalid params sde_connector null\n");
 		return -EINVAL;
@@ -592,10 +592,19 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 		return -EINVAL;
 	}
 
+	bl_dev = c_conn->bl_device;
+	if (!bl_dev) {
+		SDE_ERROR("Invalid params (s) backlight_device null\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&bl_dev->update_lock);
+
 	bl_config = &dsi_display->panel->bl_config;
 
 	if (!c_conn->allow_bl_update) {
 		c_conn->unset_bl_level = bl_config->bl_level;
+		mutex_unlock(&bl_dev->update_lock);
 		return 0;
 	}
 
@@ -613,7 +622,7 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 	rc = c_conn->ops.set_backlight(&c_conn->base,
 			dsi_display, bl_config->bl_level);
 	c_conn->unset_bl_level = 0;
-
+        mutex_unlock(&bl_dev->update_lock);
 	return rc;
 }
 
@@ -821,23 +830,11 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 		vdd = display->panel->panel_private;
 		finger_mask_state = sde_connector_get_property(c_conn->base.state,
 				CONNECTOR_PROP_FINGERPRINT_MASK);
-
-		if (is_aosp) {
-	                if (finger_mask_state == 0 && vdd->finger_mask == 1) {
-        	                finger_mask_state = vdd->finger_mask;
-                	        SDE_ERROR("[FINGER_MASK]updated finger mask mode %d\n", vdd->finger_mask);
-	                } else if (finger_mask_state == 1 && vdd->finger_mask == 0) {
-        	                finger_mask_state = vdd->finger_mask;
-                	        vdd->finger_mask_updated = false;
-                        	SDE_ERROR("[FINGER_MASK]updated finger mask mode %d\n", vdd->finger_mask);
-	                }
-		} else {
-			vdd->finger_mask_updated = false;
-			if (finger_mask_state != vdd->finger_mask) {
-				SDE_ERROR("[FINGER MASK]updated finger mask mode %d\n", finger_mask_state);
-				vdd->finger_mask_updated = true;
-				vdd->finger_mask = finger_mask_state;
-			}
+		vdd->finger_mask_updated = false;
+		if (finger_mask_state != vdd->finger_mask) {
+			SDE_ERROR("[FINGER MASK]updated finger mask mode %d\n", finger_mask_state);
+			vdd->finger_mask_updated = true;
+			vdd->finger_mask = finger_mask_state;
 		}
 	}
 #endif

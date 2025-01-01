@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-subdir-ccflags-y := -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-align-mismatch -Wno-unused-variable -Wno-visibility -Wno-unused-function -Wno-enum-compare -O3
+
 # auto-detect subdirs
 ifeq ($(CONFIG_ARCH_KONA), y)
 include $(srctree)/techpack/display/config/konadisp.conf

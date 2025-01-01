@@ -11,7 +11,6 @@
 #include <video/mipi_display.h>
 
 #include "dsi_panel.h"
-#include "dsi_display.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 #include "sde_dbg.h"
@@ -36,38 +35,6 @@
 #define MAX_PANEL_JITTER		10
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define MIN_PREFILL_LINES      35
-
-struct bda {
-    u32 brightness;
-    u32 alpha;
-};
-
-struct bda fod_dim_lut[] = {
-	{0, 0xFF},
-	{1, 0xEC},
-	{2, 0xE6},
-	{3, 0xE0},
-	{4, 0xDC},
-	{6, 0xD5},
-	{10, 0xCA},
-	{20, 0xB7},
-	{21, 0xB5},
-	{30, 0xA8},
-	{42, 0x9A},
-	{63, 0x85},
-	{84, 0x74},
-	{105, 0x65},
-	{126, 0x58},
-	{147, 0x4C},
-	{168, 0x40},
-	{189, 0x36},
-	{210, 0x2C},
-	{231, 0x23},
-	{252, 0x1A},
-	{273, 0x11},
-	{294, 0x9},
-	{315, 0x1},
-};
 
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
@@ -974,40 +941,6 @@ error:
 	return rc;
 }
 
-static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
-{
-	return panel->bl_config.real_bl_level;
-}
-
-static u32 interpolate(uint32_t x, uint32_t xa, uint32_t xb,
-		       uint32_t ya, uint32_t yb)
-{
-	return ya - (ya - yb) * (x - xa) / (xb - xa);
-}
-
-u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
-{
-	u32 brightness = dsi_panel_get_backlight(panel);
-	int len = ARRAY_SIZE(fod_dim_lut);
-	int i;
-
-	for (i = 0; i < len; i++)
-		if (fod_dim_lut[i].brightness >= brightness)
-			break;
-
-	if (i == 0)
-		return fod_dim_lut[i].alpha;
-
-	if (i == len)
-		return fod_dim_lut[i - 1].alpha;
-
-	return interpolate(brightness,
-			   fod_dim_lut[i - 1].brightness,
-			   fod_dim_lut[i].brightness,
-			   fod_dim_lut[i - 1].alpha,
-			   fod_dim_lut[i].alpha);
-}
-
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
@@ -1033,8 +966,6 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		DSI_ERR("Backlight type(%d) not supported\n", bl->type);
 		rc = -ENOTSUPP;
 	}
-
-	bl->real_bl_level = bl_lvl;
 
 	return rc;
 }
@@ -3157,7 +3088,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 
 	panel->bl_config.bl_scale = MAX_BL_SCALE_LEVEL;
 	panel->bl_config.bl_scale_sv = MAX_SV_BL_SCALE_LEVEL;
-	panel->bl_config.real_bl_level = 0;
 
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-min-level", &val);
 	if (rc) {
@@ -3558,7 +3488,7 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 		DSI_ERR("invalid dsc slice-per-pkt:%d\n", data);
 		goto error;
 	}
-	priv_info->dsc.slice_per_pkt = 2;
+	priv_info->dsc.slice_per_pkt = data;
 
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsc-bit-per-component",
 		&data);
@@ -4167,30 +4097,6 @@ end:
 #endif
 }
 
-static struct attribute *panel_attrs[] = {
-	NULL,
-};
-
-static struct attribute_group panel_attrs_group = {
-	.attrs = panel_attrs,
-};
-
-static int dsi_panel_sysfs_init(struct dsi_panel *panel)
-{
-	int rc = 0;
-
-	rc = sysfs_create_group(&panel->parent->kobj, &panel_attrs_group);
-	if (rc)
-		DSI_ERR("failed to create panel sysfs attributes\n");
-
-	return rc;
-}
-
-static void dsi_panel_sysfs_deinit(struct dsi_panel *panel)
-{
-	sysfs_remove_group(&panel->parent->kobj, &panel_attrs_group);
-}
-
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -4321,10 +4227,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		goto error;
 
-	rc = dsi_panel_sysfs_init(panel);
-	if (rc)
-		goto error;
-
 	mutex_init(&panel->panel_lock);
 
 	return panel;
@@ -4335,8 +4237,6 @@ error:
 
 void dsi_panel_put(struct dsi_panel *panel)
 {
-	dsi_panel_sysfs_deinit(panel);
-
 	drm_panel_remove(&panel->drm_panel);
 
 	/* free resources allocated for ESD check */

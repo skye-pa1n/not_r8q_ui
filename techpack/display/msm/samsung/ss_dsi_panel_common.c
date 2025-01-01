@@ -2723,14 +2723,6 @@ int ss_panel_off_post(struct samsung_display_driver_data *vdd)
 
 	LCD_INFO("[DISPLAY_%d] +\n", vdd->ndx);
 
-	if (is_aosp) {
-		if (vdd->finger_mask)
-			vdd->finger_mask = 0;
-
-		if (vdd->br_info.common_br.finger_mask_bl_level)
-			vdd->br_info.common_br.finger_mask_bl_level = 0;
-	}
-
 	if (vdd->mdnie.support_trans_dimming)
 		vdd->mdnie.disable_trans_dimming = true;
 
@@ -5682,7 +5674,7 @@ static void set_normal_br_values(struct samsung_display_driver_data *vdd)
 static void set_hbm_br_values(struct samsung_display_driver_data *vdd)
 {
 	int from, end;
-	int left, right, p;
+	int left, right, p = 0;
 	int loop = 0;
 	struct candela_map_table *table;
 
