@@ -3697,8 +3697,6 @@ void max77705_clk_booster_set(void *data, int on)
 	cancel_delayed_work_sync(&usbpd_data->acc_booster_off_work);
 	if (on) {
 		usbpd_data->set_booster = true;
-		// cpu freq
-		res = set_freq_limit(DVFS_BOOST_HOST_ID, MAX_FREQ);
 		// hmp booster on
 		sched_set_boost(1);
 		// ddr freq
@@ -3726,8 +3724,6 @@ void max77705_clk_booster_off(struct work_struct *wk)
 	int res = 0;
 
 	pr_info("[PDIC Booster] %s+  \n", __func__);
-	// cpu freq
-	res = set_freq_limit(DVFS_BOOST_HOST_ID, -1);
 	// hmp booster off
 	sched_set_boost(0);
 	// ddr freq
