@@ -3,7 +3,7 @@ LLVM_PATH="/home/skye/bomb/clang/bin/"
 TC_PATH="/home/skye/bomb/clang/bin/"
 GCC_PATH="/usr/bin/"
 LLD_PATH="/usr/bin/"
-KERNEL_NAME=not-endless
+KERNEL_NAME=not-endless+
 MAKE="./makeparallel"
 BUILD_ENV="CC=${TC_PATH}clang CROSS_COMPILE=${TC_PATH}aarch64-linux-gnu- LLVM=1 LLVM_IAS=1 PATH=$LLVM_PATH:$LLD_PATH:$PATH"  
 KERNEL_MAKE_ENV="DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y"
@@ -25,7 +25,7 @@ make -j$(nproc --all) O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_E
 IMAGE="/home/skye/bomb/out/arch/arm64/boot/Image"
 cp $IMAGE /home/skye/bomb/AnyKernel3/ImageU
 
-cd AnyKernel3
+cd /home/skye/bomb/AnyKernel3
 rm *.zip
 zip -r9 ${KERNEL_NAME}-$(date +"%Y%m%d")-r8q.zip .
 echo "The bomb has been planted."

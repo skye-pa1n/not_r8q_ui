@@ -1,4 +1,5 @@
-CONFIG_LOCALVERSION="-not-endless+susfs"
+CONFIG_LOCALVERSION="-not-endless+"
+
 # Misc Clang Compiler Optimizations
 CONFIG_LTO_CLANG=y
 CONFIG_LTO=y
