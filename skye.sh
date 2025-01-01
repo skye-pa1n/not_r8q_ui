@@ -9,7 +9,7 @@ BUILD_ENV="CC=${TC_PATH}clang CROSS_COMPILE=${TC_PATH}aarch64-linux-gnu- LLVM=1 
 KERNEL_MAKE_ENV="DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y"
 
 rm -rf /home/skye/bomb/out/arch/arm64/boot/Image
-rm -rf AnyKernel3/dtb
+rm -rf /home/skye/bomb/AnyKernel3/dtb
 rm -rf .version
 rm -rf .local
 make O=/home/skye/bomb/out clean
@@ -23,7 +23,7 @@ cat $DTB_OUT/*.dtb > /home/skye/bomb/AnyKernel3/a14.dtb
 
 make -j$(nproc --all) O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_ENV Image
 IMAGE="/home/skye/bomb/out/arch/arm64/boot/Image"
-mv $IMAGE /home/skye/bomb/AnyKernel3/ImageU
+cp $IMAGE /home/skye/bomb/AnyKernel3/ImageU
 
 cd AnyKernel3
 rm *.zip
