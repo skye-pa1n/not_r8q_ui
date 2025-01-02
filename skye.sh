@@ -1,6 +1,6 @@
 #!/bin/bash
-LLVM_PATH="/home/skye/bomb/clang/bin/"
-TC_PATH="/home/skye/bomb/clang/bin/"
+LLVM_PATH="/home/skye/bomb/antman/bin/"
+TC_PATH="/home/skye/bomb/antman/bin/"
 GCC_PATH="/usr/bin/"
 LLD_PATH="/usr/bin/"
 KERNEL_NAME=not-endless+
