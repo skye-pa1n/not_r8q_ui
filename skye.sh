@@ -1,6 +1,6 @@
 #!/bin/bash
-LLVM_PATH="/home/skye/bomb/antman/bin/"
-TC_PATH="/home/skye/bomb/antman/bin/"
+LLVM_PATH="/home/skye/bomb/clang/bin/"
+TC_PATH="/home/skye/bomb/clang/bin/"
 GCC_PATH="/usr/bin/"
 LLD_PATH="/usr/bin/"
 KERNEL_NAME=not-endless+
@@ -13,11 +13,9 @@ rm -rf /home/skye/bomb/AnyKernel3/dtb
 rm -rf .version
 rm -rf .local
 make O=/home/skye/bomb/out clean
-#make O=/home/skye/bomb/out mrproper
 make O=/home/skye/bomb/out ARCH=arm64 $BUILD_ENV not_defconfig
 
 make -j10 O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_ENV dtbs
-
 DTB_OUT="/home/skye/bomb/out/arch/arm64/boot/dts/vendor/qcom"
 cat $DTB_OUT/*.dtb > /home/skye/bomb/AnyKernel3/a14.dtb
 

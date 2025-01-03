@@ -48,8 +48,11 @@ struct user_struct {
 	/* Miscellaneous per-user rate limit */
 	struct ratelimit_state ratelimit;
 
-#if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
+#ifdef CONFIG_KSU_SUSFS
+	u64 android_kabi_reserved1;
 	u64 android_kabi_reserved2;
+	u64 android_kabi_reserved4;
+	u64 android_kabi_reserved8;
 #endif
 
 	ANDROID_KABI_RESERVE(1);

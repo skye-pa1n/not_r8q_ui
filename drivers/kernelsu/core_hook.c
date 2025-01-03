@@ -848,7 +848,6 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
 	}
 }
 
-#ifdef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 void susfs_try_umount_all(uid_t uid) {
 	susfs_try_umount(uid);
@@ -860,7 +859,6 @@ void susfs_try_umount_all(uid_t uid) {
 	ksu_try_umount("/data/adb/modules", false, MNT_DETACH);
 	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
 }
-#endif
 #endif
 
 int ksu_handle_setuid(struct cred *new, const struct cred *old)
@@ -881,8 +879,7 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 		// old process is not root, ignore it.
 		return 0;
 	}
-	
-#ifdef CONFIG_KSU_SUSFS
+
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// check if current process is zygote
 	bool is_zygote_child = susfs_is_sid_equal(old->security, susfs_zygote_sid);
@@ -892,7 +889,6 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 			goto out_ksu_try_umount;
 		}
 	}
-#endif
 #endif
 
 	if (!is_appuid(new_uid) || is_unsupported_uid(new_uid.val)) {
@@ -911,10 +907,8 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	}
 #endif
 
-#ifdef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 out_ksu_try_umount:
-#endif
 #endif
 	if (!ksu_uid_should_umount(new_uid.val)) {
 		return 0;
@@ -942,7 +936,6 @@ out_ksu_try_umount:
 		current->pid);
 #endif
 
-#ifdef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 	// susfs come first, and lastly umount by ksu, make sure umount in reversed order
 	susfs_try_umount_all(new_uid.val);
@@ -958,7 +951,7 @@ out_ksu_try_umount:
 	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
 	ksu_try_umount("/sbin", false, MNT_DETACH);
 #endif
-#endif
+
 	return 0;
 }
 
@@ -1038,7 +1031,7 @@ static int ksu_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 	return -ENOSYS;
 }
 // kernel 4.4 and 4.9
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI)
 static int ksu_key_permission(key_ref_t key_ref, const struct cred *cred,
 			      unsigned perm)
 {
@@ -1071,7 +1064,7 @@ static struct security_hook_list ksu_hooks[] = {
 	LSM_HOOK_INIT(task_prctl, ksu_task_prctl),
 	LSM_HOOK_INIT(inode_rename, ksu_inode_rename),
 	LSM_HOOK_INIT(task_fix_setuid, ksu_task_fix_setuid),
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI)
 	LSM_HOOK_INIT(key_permission, ksu_key_permission)
 #endif
 };

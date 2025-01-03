@@ -10,6 +10,8 @@
 #
 # Copyright (C) 1995-2001 by Russell King
 
+subdir-ccflags-y += -O3 --fast-math
+
 LDFLAGS_vmlinux	:=--no-undefined -X -z norelro
 CPPFLAGS_vmlinux.lds = -DTEXT_OFFSET=$(TEXT_OFFSET)
 GZFLAGS		:=-9

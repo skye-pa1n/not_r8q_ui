@@ -34,6 +34,11 @@
 #include "pnode.h"
 #include "internal.h"
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+#include <linux/sched/user.h>
+#endif // #ifdef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_current_zygote_domain(void);
@@ -49,6 +54,7 @@ extern void susfs_auto_add_try_umount_for_bind_mount(struct path *path);
 #endif
 #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
 extern void susfs_auto_add_sus_ksu_default_mount(const char __user *to_pathname);
+#endif
 #endif
 
 #ifdef CONFIG_KDP_NS
@@ -333,6 +339,7 @@ static int mnt_alloc_vfsmount(struct mount *mnt)
 static void mnt_free_id(struct mount *mnt)
 {
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	u64 android_kabi_reserved4;
 	// If mnt->mnt.android_kabi_reserved4 is not zero, it means mnt->mnt_id is spoofed,
 	// so here we return the original mnt_id for being freed.
 	if (unlikely(mnt->mnt.android_kabi_reserved4)) {
@@ -1275,6 +1282,8 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 {
 	struct mount *mnt;
 	struct dentry *root;
+	u64 android_kabi_reserved4;
+	u64 android_kabi_reserved8;
 
 	if (!type)
 		return ERR_PTR(-ENODEV);
@@ -1363,6 +1372,8 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 #endif
 	struct mount *mnt;
 	int err;
+	u64 android_kabi_reserved4;
+	u64 android_kabi_reserved8;
 #ifdef CONFIG_KDP_NS
 	int nsflags;
 #endif
@@ -2117,6 +2128,37 @@ static inline bool may_mandlock(void)
 	return false;
 }
 #endif
+
+static int can_umount(const struct path *path, int flags)
+{
+	struct mount *mnt = real_mount(path->mnt);
+	if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))
+		return -EINVAL;
+	if (!may_mount())
+		return -EPERM;
+	if (path->dentry != path->mnt->mnt_root)
+		return -EINVAL;
+	if (!check_mnt(mnt))
+		return -EINVAL;
+	if (mnt->mnt.mnt_flags & MNT_LOCKED) /* Check optimistically */
+		return -EINVAL;
+	if (flags & MNT_FORCE && !capable(CAP_SYS_ADMIN))
+		return -EPERM;
+	return 0;
+}
+
+int path_umount(struct path *path, int flags)
+{
+	struct mount *mnt = real_mount(path->mnt);
+	int ret;
+	ret = can_umount(path, flags);
+	if (!ret)
+		ret = do_umount(mnt, flags);
+	/* we mustn't call path_put() as that would clear mnt_expiry_mark */
+	dput(path->dentry);
+	mntput_no_expire(mnt);
+	return ret;
+}
 
 /*
  * Now umount can handle mount points as well as block devices.
@@ -3595,6 +3637,8 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	bool is_zygote_pid = susfs_is_current_zygote_domain();
 	int last_entry_mnt_id = 0;
+	u64 android_kabi_reserved4;
+	u64 android_kabi_reserved8;
 #endif
 
 	BUG_ON(!ns);

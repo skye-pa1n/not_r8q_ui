@@ -828,6 +828,9 @@ struct task_struct {
 	 */
 	struct thread_info		thread_info;
 #endif
+#ifdef CONFIG_KSU_SUSFS
+	u64 android_kabi_reserved8;
+#endif
 	/* -1 unrunnable, 0 runnable, >0 stopped: */
 	volatile long			state;
 
