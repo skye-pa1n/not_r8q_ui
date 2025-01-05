@@ -2,7 +2,7 @@
 ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_clock.o = $(CC_FLAGS_FTRACE)
 endif
-
+ccflags-y := -Wno-implicit-function-declaration -Wno-int-conversion
 # These files are disabled because they produce non-interesting flaky coverage
 # that is not a function of syscall inputs. E.g. involuntary context switches.
 KCOV_INSTRUMENT := n
@@ -21,7 +21,7 @@ obj-y += idle.o fair.o rt.o deadline.o
 obj-y += wait.o wait_bit.o swait.o completion.o
 
 obj-$(CONFIG_SMP) += cpupri.o cpudeadline.o topology.o stop_task.o pelt.o
-obj-$(CONFIG_SCHED_WALT) += walt.o boost.o sched_avg.o cass.o cpufreq_walt.o
+obj-$(CONFIG_SCHED_WALT) += walt.o boost.o sched_avg.o cpufreq_walt.o
 obj-$(CONFIG_SCHED_AUTOGROUP) += autogroup.o
 obj-$(CONFIG_SCHEDSTATS) += stats.o
 obj-$(CONFIG_SCHED_DEBUG) += debug.o
