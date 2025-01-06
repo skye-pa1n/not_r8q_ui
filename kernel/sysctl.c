@@ -127,6 +127,38 @@ extern int sysctl_nr_trim_pages;
 static int sixty = 60;
 #endif
 
+#if defined(CONFIG_UNEVICTABLE_FILE)
+#if CONFIG_UNEVICTABLE_FILE_KBYTES_LOW < 0
+#error "CONFIG_UNEVICTABLE_FILE_KBYTES_LOW should be >= 0"
+#endif
+#if CONFIG_UNEVICTABLE_FILE_KBYTES_MIN < 0
+#error "CONFIG_UNEVICTABLE_FILE_KBYTES_MIN should be >= 0"
+#endif
+#if CONFIG_UNEVICTABLE_FILE_KBYTES_LOW < CONFIG_UNEVICTABLE_FILE_KBYTES_MIN
+#error "CONFIG_UNEVICTABLE_FILE_KBYTES_LOW should be >= CONFIG_UNEVICTABLE_FILE_KBYTES_MIN"
+#endif
+unsigned long sysctl_unevictable_file_kbytes_low __read_mostly =
+	CONFIG_UNEVICTABLE_FILE_KBYTES_LOW;
+unsigned long sysctl_unevictable_file_kbytes_min __read_mostly =
+	CONFIG_UNEVICTABLE_FILE_KBYTES_MIN;
+#endif
+
+#if defined(CONFIG_UNEVICTABLE_ANON)
+#if CONFIG_UNEVICTABLE_ANON_KBYTES_LOW < 0
+#error "CONFIG_UNEVICTABLE_ANON_KBYTES_LOW should be >= 0"
+#endif
+#if CONFIG_UNEVICTABLE_ANON_KBYTES_MIN < 0
+#error "CONFIG_UNEVICTABLE_ANON_KBYTES_MIN should be >= 0"
+#endif
+#if CONFIG_UNEVICTABLE_ANON_KBYTES_LOW < CONFIG_UNEVICTABLE_ANON_KBYTES_MIN
+#error "CONFIG_UNEVICTABLE_ANON_KBYTES_LOW should be >= CONFIG_UNEVICTABLE_ANON_KBYTES_MIN"
+#endif
+unsigned long sysctl_unevictable_anon_kbytes_low __read_mostly =
+	CONFIG_UNEVICTABLE_ANON_KBYTES_LOW;
+unsigned long sysctl_unevictable_anon_kbytes_min __read_mostly =
+	CONFIG_UNEVICTABLE_ANON_KBYTES_MIN;
+#endif
+
 static int __maybe_unused neg_one = -1;
 static int __maybe_unused neg_three = -3;
 
@@ -1510,7 +1542,7 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one_thousand,
 	},
-#endi
+#endif
 	{
 		.procname	= "panic_on_warn",
 		.data		= &panic_on_warn,
@@ -2028,6 +2060,44 @@ static struct ctl_table vm_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one,
+	},
+#endif
+#if defined(CONFIG_UNEVICTABLE_FILE)
+	{
+		.procname	= "unevictable_file_kbytes_low",
+		.data		= &sysctl_unevictable_file_kbytes_low,
+		.maxlen		= sizeof(sysctl_unevictable_file_kbytes_low),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &sysctl_unevictable_file_kbytes_min,
+	},
+	{
+		.procname	= "unevictable_file_kbytes_min",
+		.data		= &sysctl_unevictable_file_kbytes_min,
+		.maxlen		= sizeof(sysctl_unevictable_file_kbytes_min),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &zero_ul,
+		.extra2		= &sysctl_unevictable_file_kbytes_low,
+	},
+#endif
+#if defined(CONFIG_UNEVICTABLE_ANON)
+	{
+		.procname	= "unevictable_anon_kbytes_low",
+		.data		= &sysctl_unevictable_anon_kbytes_low,
+		.maxlen		= sizeof(sysctl_unevictable_anon_kbytes_low),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &sysctl_unevictable_anon_kbytes_min,
+	},
+	{
+		.procname	= "unevictable_anon_kbytes_min",
+		.data		= &sysctl_unevictable_anon_kbytes_min,
+		.maxlen		= sizeof(sysctl_unevictable_anon_kbytes_min),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &zero_ul,
+		.extra2		= &sysctl_unevictable_anon_kbytes_low,
 	},
 #endif
 	{
