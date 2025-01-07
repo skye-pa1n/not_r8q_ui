@@ -160,7 +160,6 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	struct device *cpu_dev;
 	struct clk *cpu_clk;
 	unsigned int transition_latency;
-	bool fallback = false;
 	const char *name;
 	int ret, nr_opp;
 
@@ -183,13 +182,6 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 		if (ret != -ENOENT)
 			goto out_put_clk;
 
-		/*
-		 * operating-points-v2 not supported, fallback to old method of
-		 * finding shared-OPPs for backward compatibility if the
-		 * platform hasn't set sharing CPUs.
-		 */
-		if (dev_pm_opp_get_sharing_cpus(cpu_dev, policy->cpus))
-			fallback = true;
 	}
 
 	/*
@@ -240,19 +232,6 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 		goto out_free_opp;
 	}
 	nr_opp = ret;
-
-	if (fallback) {
-		cpumask_setall(policy->cpus);
-
-		/*
-		 * OPP tables are initialized only for policy->cpu, do it for
-		 * others as well.
-		 */
-		ret = dev_pm_opp_set_sharing_cpus(cpu_dev, policy->cpus);
-		if (ret)
-			dev_err(cpu_dev, "%s: failed to mark OPPs as shared: %d\n",
-				__func__, ret);
-	}
 
 	ret = dev_pm_opp_init_cpufreq_table(cpu_dev, &freq_table);
 	if (ret) {
