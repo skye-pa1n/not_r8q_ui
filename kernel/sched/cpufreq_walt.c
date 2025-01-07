@@ -517,11 +517,7 @@ static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 {
 	struct rq *rq = cpu_rq(wg_cpu->cpu);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 	unsigned long max = arch_scale_cpu_capacity(NULL, wg_cpu->cpu);
-#else
-	unsigned long max = arch_scale_cpu_capacity(wg_cpu->cpu);
-#endif
 	unsigned long util;
 
 	wg_cpu->max = max;
