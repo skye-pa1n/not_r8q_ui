@@ -1321,16 +1321,16 @@ static int sugov_init(struct cpufreq_policy *policy)
 	switch (policy->cpu) {
 	default:
 	case 0:
-		tunables->up_rate_limit_us = 500;
-	        tunables->down_rate_limit_us = 1000;
+		tunables->up_rate_limit_us = 1000;
+	        tunables->down_rate_limit_us = 4000;
 		break;
 	case 4:
-		tunables->up_rate_limit_us = 12320;
-	        tunables->down_rate_limit_us = 2500;
+		tunables->up_rate_limit_us = 2120;
+	        tunables->down_rate_limit_us = 4470;
 		break;
 	case 7:
-		tunables->up_rate_limit_us = 11700;
-	        tunables->down_rate_limit_us = 3500;
+		tunables->up_rate_limit_us = 4170;
+	        tunables->down_rate_limit_us = 4530;
 		break;
 	}
 	
