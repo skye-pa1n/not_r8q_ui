@@ -1074,11 +1074,6 @@ static struct cpufreq_governor schedutil_gov = {
 	.limits			= sugov_limits,
 };
 
-struct cpufreq_governor *cpufreq_default_governor(void)
-{
-		return &schedutil_gov;
-}
-
 static int __init sugov_register(void)
 {
 	return cpufreq_register_governor(&schedutil_gov);
