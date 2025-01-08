@@ -133,7 +133,7 @@ DEFINE_PER_CPU(int, fps_group_id);
  * (BORE default SCHED_TUNABLESCALING_NONE = *1 constant)
  * (CFS  default SCHED_TUNABLESCALING_LOG  = *(1+ilog(ncpus))
  */
-enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_LOG;
+enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_NONE;
 
 /*
  * Minimal preemption granularity for CPU-bound tasks:
