@@ -180,12 +180,12 @@ static void __ref asmp_work_fn(struct work_struct *work) {
 
     /* find current max and min cpu freq to estimate load */
     get_online_cpus();
-    cpu_load_lc = get_cpu_loads(4);
+    cpu_load_lc = get_cpu_loads(0);
     fast_load_lc = cpu_load_lc;
-    cpu_load_bc = get_cpu_loads(0);
+    cpu_load_bc = get_cpu_loads(4);
     fast_load_bc = cpu_load_bc;
     for_each_online_cpu(cpu) {
-        if (cpu && cpu < 4) {
+        if (cpu > 4) {
             nr_cpu_online_bc++;
             load = get_cpu_loads(cpu);
             if (load < slow_load_bc) {
@@ -195,7 +195,7 @@ static void __ref asmp_work_fn(struct work_struct *work) {
                 fast_load_bc = load;
         }
 
-        if (cpu > 4) {
+        if (cpu && cpu < 4) {
             nr_cpu_online_lc++;
             load = get_cpu_loads(cpu);
             if (load < slow_load_lc) {
@@ -208,55 +208,55 @@ static void __ref asmp_work_fn(struct work_struct *work) {
     put_online_cpus();
 
     /********************************************************************
-     *                     Little Cluster cpu(4..7)                     *
-     ********************************************************************/
-    if (cpu_load_lc < slow_load_lc)
-        slow_load_lc = cpu_load_lc;
-
-    /* Always check cpu 4 before + up nr */
-    if (cpu_online(4))
-        nr_cpu_online_lc += 1;
-
-    /* hotplug one core if all online cores are over up_load limit */
-    if (slow_load_lc > up_load_lc) {
-        if ((nr_cpu_online_lc < max_cpu_lc) &&
-            (cycle >= asmp_param.cycle_up)) {
-            cpu = cpumask_next_zero(4, cpu_online_mask);
-            asmp_online_cpus(cpu);
-            cycle = 0;
-        }
-    /* unplug slowest core if all online cores are under down_load limit */
-    } else if ((slow_cpu_lc > 4) && (fast_load_lc < down_load_lc)) {
-        if ((nr_cpu_online_lc > min_cpu_lc) &&
-            (cycle >= asmp_param.cycle_down)) {
-            asmp_offline_cpus(slow_cpu_lc);
-            cycle = 0;
-        }
-    }
-
-    /********************************************************************
-     *                      Big Cluster cpu(0..3)                       *
+     *                     Big Cluster cpu(4..7)                     *
      ********************************************************************/
     if (cpu_load_bc < slow_load_bc)
         slow_load_bc = cpu_load_bc;
 
-    /* Always check cpu 0 before + up nr */
-    if (cpu_online(0))
+    /* Always check cpu 4 before + up nr */
+    if (cpu_online(4))
         nr_cpu_online_bc += 1;
 
     /* hotplug one core if all online cores are over up_load limit */
     if (slow_load_bc > up_load_bc) {
         if ((nr_cpu_online_bc < max_cpu_bc) &&
             (cycle >= asmp_param.cycle_up)) {
+            cpu = cpumask_next_zero(4, cpu_online_mask);
+            asmp_online_cpus(cpu);
+            cycle = 0;
+        }
+    /* unplug slowest core if all online cores are under down_load limit */
+    } else if ((slow_cpu_bc > 4) && (fast_load_bc < down_load_bc)) {
+        if ((nr_cpu_online_bc > min_cpu_bc) &&
+            (cycle >= asmp_param.cycle_down)) {
+            asmp_offline_cpus(slow_cpu_bc);
+            cycle = 0;
+        }
+    }
+
+    /********************************************************************
+     *                      Little Cluster cpu(0..3)                       *
+     ********************************************************************/
+    if (cpu_load_lc < slow_load_lc)
+        slow_load_lc = cpu_load_lc;
+
+    /* Always check cpu 0 before + up nr */
+    if (cpu_online(0))
+        nr_cpu_online_lc += 1;
+
+    /* hotplug one core if all online cores are over up_load limit */
+    if (slow_load_lc > up_load_lc) {
+        if ((nr_cpu_online_lc < max_cpu_lc) &&
+            (cycle >= asmp_param.cycle_up)) {
             cpu = cpumask_next_zero(0, cpu_online_mask);
             asmp_online_cpus(cpu);
             cycle = 0;
         }
     /* unplug slowest core if all online cores are under down_load limit */
-    } else if (slow_cpu_bc && (fast_load_bc < down_load_bc)) {
-        if ((nr_cpu_online_bc > min_cpu_bc) &&
+    } else if (slow_cpu_lc && (fast_load_lc < down_load_lc)) {
+        if ((nr_cpu_online_lc > min_cpu_lc) &&
             (cycle >= asmp_param.cycle_down)) {
-            asmp_offline_cpus(slow_cpu_bc);
+            asmp_offline_cpus(slow_cpu_lc);
             cycle = 0;
         }
     }
@@ -266,7 +266,7 @@ static void __ref asmp_work_fn(struct work_struct *work) {
      * give a delay for atleast 2 seconds to prevent
      * wrong cpu loads calculation.
      */
-    if (nr_cpu_online_lc < min_cpu_lc || nr_cpu_online_bc < min_cpu_bc) {
+    if (nr_cpu_online_lc < min_cpu_lc || nr_cpu_online_lc < min_cpu_lc) {
         for_each_possible_cpu(cpu) {
             /* Online All cores */
             if (!cpu_online(cpu))
