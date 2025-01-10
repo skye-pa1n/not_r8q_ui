@@ -76,7 +76,7 @@ static struct asmp_param_struct {
     .max_cpus_pr = 1, /* Max cpu Prime cluster ! */ 
     .max_cpus_bc = 3, /* Max cpu Big cluster ! */
     .max_cpus_lc = 4, /* Max cpu Little cluster ! */
-    .min_cpus_pr = 0, /* Minimum Prime cluster online */
+    .min_cpus_pr = 1, /* Minimum Prime cluster online */
     .min_cpus_bc = 1, /* Minimum Big cluster online */
     .min_cpus_lc = 3, /* Minimum Little cluster online */
     .cpufreq_up_pr = 80,
