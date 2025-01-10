@@ -18,10 +18,10 @@ endif
 
 ifdef CONFIG_SCHED_MUQSS
 obj-y += MuQSS.o clock.o cputime.o cpufreq_walt.o
-obj-y += idle.o cass.o cpufreq_muqss.o
+obj-y += idle.o cass.o cpufreq_muqss.o cpufreq_uag.o
 obj-y += wait.o wait_bit.o swait.o completion.o
 else
-obj-y += core.o loadavg.o clock.o cputime.o
+obj-y += core.o loadavg.o clock.o cputime.o cpufreq_uag.o
 obj-y += idle.o fair.o rt.o deadline.o cpufreq_walt.o
 obj-y += wait.o wait_bit.o swait.o completion.o
 endif
