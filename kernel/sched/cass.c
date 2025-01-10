@@ -24,17 +24,13 @@
  * relative utilization, all CPUs are kept at their lowest P-state necessary to
  * satisfy the overall load at any given moment.
  */
-#include <linux/sched/topology.h>
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <linux/sched.h>
-#include <linux/cpumask.h>
-#include <linux/cpuidle.h>
-#include <linux/sched/task.h>
-
-DECLARE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
-
-#define pu_rq(cpu)		(&per_cpu(runqueues, (cpu)))
+#include <linux/rbtree_augmented.h>
+#include "sched.h"
+#include <linux/cpufreq.h>
+#include <linux/percpu.h>
+#include <trace/events/power.h>
+#include <trace/events/sched.h>
+#include "walt.h"
 
 struct cass_cpu_cand {
 	int cpu;
@@ -46,7 +42,7 @@ struct cass_cpu_cand {
 static __always_inline
 unsigned long cass_cpu_util(int cpu, bool sync)
 {
-	struct cfs_rq *cfs_rq = &pu_rq(cpu)->cfs;
+	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
 	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
 
 	/* Deduct @current's util from this CPU if this is a sync wake */
@@ -140,7 +136,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 			curr->exit_lat = 1;
 
 			/* Add on the actual idle exit latency, if any */
-			idle_state = idle_get_state(pu_rq(cpu));
+			idle_state = idle_get_state(cpu_rq(cpu));
 			if (idle_state)
 				curr->exit_lat += idle_state->exit_latency;
 		} else {
