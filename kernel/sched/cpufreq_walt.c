@@ -1494,9 +1494,9 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	}
 
 	gov_attr_set_init(&tunables->attr_set, &wg_policy->tunables_hook);
-	tunables->hispeed_load = 89;
+	tunables->hispeed_load = 0;
 	spin_lock_init(&tunables->target_loads_lock);
-	tunables->target_loads = 94;
+	tunables->target_loads = 84;
 	tunables->ntarget_loads = ARRAY_SIZE(default_target_loads);
 	tunables->target_load_thresh = DEFAULT_TARGET_LOAD_THRESH;
 	tunables->target_load_shift = DEFAULT_TARGET_LOAD_SHIFT;
@@ -1504,16 +1504,16 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	switch (policy->cpu) {
 	default:
 	case 0:
-		tunables->up_rate_limit_us = 4000;
-	        tunables->down_rate_limit_us = 400;
+		tunables->up_rate_limit_us = 500;
+	        tunables->down_rate_limit_us = 1000;
 		break;
 	case 4:
-		tunables->up_rate_limit_us = 21140;
-	        tunables->down_rate_limit_us = 470;
+		tunables->up_rate_limit_us = 13140;
+	        tunables->down_rate_limit_us = 70;
 		break;
 	case 7:
-		tunables->up_rate_limit_us = 15130;
-	        tunables->down_rate_limit_us = 430;
+		tunables->up_rate_limit_us = 12130;
+	        tunables->down_rate_limit_us = 30;
 		break;
 	}
 	

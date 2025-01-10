@@ -16,7 +16,8 @@
  *       Adaptation for Octa core processor.
  *
  * Copyright (C) 2025, João Batista (skye-pa1n) <sonicgames772@gmail.com>
- *       Fixup cpu cluster logic in newer octa core processors.
+ *       Fixup cpu cluster logic & add prime cluster logic in newer octa core processors.
+ *       Based on Ryan Andri work "Adaptation for Octa core processor.".
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
