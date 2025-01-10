@@ -100,7 +100,6 @@ fi
 DEFAULT_ARGS="
 CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ARCH=arm64
-KCFLAGS= -O3 -ffast-math
 "
 IMAGE="$(pwd)/out/arch/arm64/boot/Image"
 AK3="$(pwd)/AnyKernel3"
