@@ -24,13 +24,6 @@
  * relative utilization, all CPUs are kept at their lowest P-state necessary to
  * satisfy the overall load at any given moment.
  */
-#include <linux/rbtree_augmented.h>
-#include "sched.h"
-#include <linux/cpufreq.h>
-#include <linux/percpu.h>
-#include <trace/events/power.h>
-#include <trace/events/sched.h>
-#include "walt.h"
 
 struct cass_cpu_cand {
 	int cpu;
