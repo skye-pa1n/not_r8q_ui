@@ -293,7 +293,7 @@ static void waltgov_deferred_update(struct waltgov_policy *wg_policy, u64 time,
 #endif
 }
 
-#define TARGET_LOAD 80
+#define TARGET_LOAD 90
 static inline unsigned long walt_map_util_freq(unsigned long util,
 					struct waltgov_policy *wg_policy,
 					unsigned long cap, int cpu)
@@ -517,7 +517,11 @@ static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 {
 	struct rq *rq = cpu_rq(wg_cpu->cpu);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 	unsigned long max = arch_scale_cpu_capacity(NULL, wg_cpu->cpu);
+#else
+	unsigned long max = arch_scale_cpu_capacity(wg_cpu->cpu);
+#endif
 	unsigned long util;
 
 	wg_cpu->max = max;
@@ -1494,9 +1498,9 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	}
 
 	gov_attr_set_init(&tunables->attr_set, &wg_policy->tunables_hook);
-	tunables->hispeed_load = 0;
+	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	spin_lock_init(&tunables->target_loads_lock);
-	tunables->target_loads = 84;
+	tunables->target_loads = default_target_loads;
 	tunables->ntarget_loads = ARRAY_SIZE(default_target_loads);
 	tunables->target_load_thresh = DEFAULT_TARGET_LOAD_THRESH;
 	tunables->target_load_shift = DEFAULT_TARGET_LOAD_SHIFT;
@@ -1504,16 +1508,16 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	switch (policy->cpu) {
 	default:
 	case 0:
-		tunables->up_rate_limit_us = 500;
-	        tunables->down_rate_limit_us = 1000;
+		tunables->up_rate_limit_us = 1000;
+	        tunables->down_rate_limit_us = 1500;
 		break;
 	case 4:
-		tunables->up_rate_limit_us = 13140;
-	        tunables->down_rate_limit_us = 70;
+		tunables->up_rate_limit_us = 8000;
+	        tunables->down_rate_limit_us = 1070;
 		break;
 	case 7:
-		tunables->up_rate_limit_us = 12130;
-	        tunables->down_rate_limit_us = 30;
+		tunables->up_rate_limit_us = 4000;
+	        tunables->down_rate_limit_us = 1030;
 		break;
 	}
 	
@@ -1525,9 +1529,11 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	case 4:
 		tunables->rtg_boost_freq = DEFAULT_CPU4_RTG_BOOST_FREQ;
 		break;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
 	case 7:
 		tunables->rtg_boost_freq = DEFAULT_CPU7_RTG_BOOST_FREQ;
 		break;
+#endif
 	}
 
 	policy->governor_data = wg_policy;
@@ -1678,7 +1684,9 @@ static void waltgov_limits(struct cpufreq_policy *policy)
 static struct cpufreq_governor walt_gov = {
 	.name			= "walt",
 	.owner			= THIS_MODULE,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	.dynamic_switching	= true,
+#endif
 	.init			= waltgov_init,
 	.exit			= waltgov_exit,
 	.start			= waltgov_start,

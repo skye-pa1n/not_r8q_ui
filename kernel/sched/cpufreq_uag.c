@@ -3,6 +3,8 @@
  * This is based on schedutil governor but modified to work with
  * WALT.
  *
+ * Support with old kernel min version 4.9
+ *
  * Copyright (C) 2016, Intel Corporation
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2023, D8G Official.
@@ -15,13 +17,30 @@
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+#include <trace/hooks/sched.h>
+#endif
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <linux/sched/cpufreq.h>
 #include <uapi/linux/sched/types.h>
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
+#include <linux/cpufreq.h>
+#include <linux/slab.h>
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 #include "sched.h"
+#endif
 #ifdef CONFIG_SCHED_WALT
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+#include "walt/walt.h"
+#else
 #include "walt.h"
+#endif
+#endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
+#include "trace.h"
 #endif
 
 struct uaggov_tunables {
@@ -274,7 +293,7 @@ static void uaggov_deferred_update(struct uaggov_policy *wg_policy, u64 time,
 #endif
 }
 
-#define TARGET_LOAD 80
+#define TARGET_LOAD 78
 static inline unsigned long walt_map_util_freq(unsigned long util,
 					struct uaggov_policy *wg_policy,
 					unsigned long cap, int cpu)
@@ -498,7 +517,11 @@ static unsigned long uaggov_get_util(struct uaggov_cpu *wg_cpu)
 static unsigned long uaggov_get_util(struct uaggov_cpu *wg_cpu)
 {
 	struct rq *rq = cpu_rq(wg_cpu->cpu);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 	unsigned long max = arch_scale_cpu_capacity(NULL, wg_cpu->cpu);
+#else
+	unsigned long max = arch_scale_cpu_capacity(wg_cpu->cpu);
+#endif
 	unsigned long util;
 
 	wg_cpu->max = max;
@@ -1475,9 +1498,9 @@ static int uaggov_init(struct cpufreq_policy *policy)
 	}
 
 	gov_attr_set_init(&tunables->attr_set, &wg_policy->tunables_hook);
-	tunables->hispeed_load = 0;
+	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	spin_lock_init(&tunables->target_loads_lock);
-	tunables->target_loads = 80;
+	tunables->target_loads = default_target_loads;
 	tunables->ntarget_loads = ARRAY_SIZE(default_target_loads);
 	tunables->target_load_thresh = DEFAULT_TARGET_LOAD_THRESH;
 	tunables->target_load_shift = DEFAULT_TARGET_LOAD_SHIFT;
@@ -1485,15 +1508,15 @@ static int uaggov_init(struct cpufreq_policy *policy)
 	switch (policy->cpu) {
 	default:
 	case 0:
-		tunables->up_rate_limit_us = 500;
+		tunables->up_rate_limit_us = 100;
 	        tunables->down_rate_limit_us = 1500;
 		break;
 	case 4:
-		tunables->up_rate_limit_us = 1000;
+		tunables->up_rate_limit_us = 800;
 	        tunables->down_rate_limit_us = 1070;
 		break;
 	case 7:
-		tunables->up_rate_limit_us = 1000;
+		tunables->up_rate_limit_us = 500;
 	        tunables->down_rate_limit_us = 1030;
 		break;
 	}
@@ -1506,9 +1529,11 @@ static int uaggov_init(struct cpufreq_policy *policy)
 	case 4:
 		tunables->rtg_boost_freq = DEFAULT_CPU4_RTG_BOOST_FREQ;
 		break;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
 	case 7:
 		tunables->rtg_boost_freq = DEFAULT_CPU7_RTG_BOOST_FREQ;
 		break;
+#endif
 	}
 
 	policy->governor_data = wg_policy;
@@ -1659,7 +1684,9 @@ static void uaggov_limits(struct cpufreq_policy *policy)
 static struct cpufreq_governor uag_gov = {
 	.name			= "uag",
 	.owner			= THIS_MODULE,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	.dynamic_switching	= true,
+#endif
 	.init			= uaggov_init,
 	.exit			= uaggov_exit,
 	.start			= uaggov_start,
