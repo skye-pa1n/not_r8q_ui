@@ -18,7 +18,7 @@ static int __init audio_q6_init(void)
 	q6asm_init();
 	q6lsm_init();
 	voice_init();
-	core_init();
+	qcore_init();
 	msm_audio_ion_init();
 	audio_slimslave_init();
 	avtimer_init();

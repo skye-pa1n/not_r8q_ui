@@ -1245,7 +1245,29 @@ config SCHED_CASS
 	  balancing load based on relative utilization, all CPUs are kept at
 	  their lowest P-state necessary to satisfy the overall load at any
 	  given moment.
+	  
+config SCHED_NEMS
+	tristate "Not a Exynos Mobile Scheduler"
+	depends on SMP
+	default n
+	help
+	  This option supports the Not Exynos mobile scheduler. It is designed to
+	  secure the limits of energy aware scheduler. This option provides
+	  features such as independent boosting functinos such as on-time migration,
+	  and prefer_perf and enhanced prefer_idle that work in conjunction with
+	  SCHEDTUNE.
 
+	  If unsure, say N.
+
+config SCHED_NEMS_TUNE
+	bool "Tuner for Not Exynos Mobile Scheduler"
+	depends on SCHED_EMS
+	default n
+	help
+	  This option supports tuner for the Not Exynos mobile scheduler.
+
+	  If unsure, say N.
+	  
 config SCHED_AUTOGROUP
 	bool "Automatic process group scheduling"
 	depends on !SCHED_MUQSS

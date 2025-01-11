@@ -2054,7 +2054,7 @@ static struct platform_driver q6core_driver = {
 	}
 };
 
-int __init core_init(void)
+int __init qcore_init(void)
 {
 	memset(&q6core_lcl, 0, sizeof(struct q6core_str));
 	init_waitqueue_head(&q6core_lcl.bus_bw_req_wait);

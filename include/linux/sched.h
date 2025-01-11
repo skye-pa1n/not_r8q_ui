@@ -488,6 +488,7 @@ struct sched_avg {
 	u32				period_contrib;
 	unsigned long			load_avg;
 	unsigned long			runnable_load_avg;
+	unsigned long                   runnable_avg;
 	unsigned long			util_avg;
 	struct util_est			util_est;
 } ____cacheline_aligned;
@@ -849,6 +850,10 @@ struct task_struct {
 	unsigned int			flags;
 	unsigned int			pc_flags;
 	unsigned int			ptrace;
+#ifdef CONFIG_SCHED_NEMS
+	unsigned int                    android_vendor_data1[6];
+	unsigned int                    wake_q_count;
+#endif
 #if defined(CONFIG_SMP) || defined(CONFIG_SCHED_MUQSS)
 	int on_cpu;
 #endif

@@ -1011,6 +1011,9 @@ struct rq {
 	 * remote CPUs use both these fields when doing load calculation.
 	 */
 	unsigned int		nr_running;
+#ifdef CONFIG_SCHED_NEMS
+	unsigned int		android_vendor_data1[6];
+#endif
 #ifdef CONFIG_NUMA_BALANCING
 	unsigned int		nr_numa_running;
 	unsigned int		nr_preferred_running;
@@ -1794,6 +1797,8 @@ static inline int task_on_rq_migrating(struct task_struct *p)
 #define WF_SYNC			0x01		/* Waker goes to sleep after wakeup */
 #define WF_FORK			0x02		/* Child wakeup after fork */
 #define WF_MIGRATED		0x4		/* Internal use, task got migrated */
+#define WF_ON_CPU		0x08		/* Wakee is on_cpu */
+#define WF_ANDROID_VENDOR	0x1000		/* Vendor specific for Android */
 
 /*
  * To aid in avoiding the subversion of "niceness" due to uneven distribution
@@ -1886,11 +1891,10 @@ struct sched_class {
 
 	void (*set_cpus_allowed)(struct task_struct *p,
 				 const struct cpumask *newmask);
-
 	void (*rq_online)(struct rq *rq);
 	void (*rq_offline)(struct rq *rq);
 #endif
-
+	 
 	void (*set_curr_task)(struct rq *rq);
 	void (*task_tick)(struct rq *rq, struct task_struct *p, int queued);
 	void (*task_fork)(struct task_struct *p);

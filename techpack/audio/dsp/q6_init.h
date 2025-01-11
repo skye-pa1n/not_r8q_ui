@@ -12,7 +12,7 @@ int q6asm_init(void);
 int q6lsm_init(void);
 int voice_init(void);
 int audio_cal_init(void);
-int core_init(void);
+int qcore_init(void);
 int rtac_init(void);
 int msm_audio_ion_init(void);
 int avtimer_init(void);
