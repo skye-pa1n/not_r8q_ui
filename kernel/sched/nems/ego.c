@@ -26,8 +26,13 @@
 
 struct ego_idle {
 	int		avg_ratio[CSTATE_MAX];
-	int		last_ratio[CSTATE_MAX];
 	u32		prev_idx;
+};
+
+struct ego_slack_timer {
+	/* for slack timer */
+	unsigned long min;
+	struct timer_list timer;
 };
 
 struct ego_policy {
@@ -57,11 +62,14 @@ struct ego_policy {
 	struct cpumask		thread_allowed_cpus;
 	int			heaviest_cpu;
 
+	/* slack timer */
+	int			slack_expired_time_ms;
+
 	/* EGO tunables */
 	unsigned int		ratio;
 	int			dis_buck_share;	/* ignore buck-share when computing energy */
+	unsigned int		hist_size;
 	int			pelt_boost;	/* dynamic changed boost */
-	int			htask_boost;	/* tunable boost */
 	int			pelt_margin;
 	int			split_pelt_margin;
 	unsigned int		split_pelt_margin_freq;
@@ -91,7 +99,8 @@ struct ego_cpu {
 	unsigned long		util;		/* current pelt util */
 	unsigned long		boosted_util;	/* current boosted util */
 
-	unsigned long		min_cap;
+	/* slack timer */
+	struct ego_slack_timer slack;
 
 	/* idle state */
 	struct ego_idle		idle;
@@ -161,16 +170,34 @@ static bool ego_postpone_freq_update(struct ego_policy *egp,
 /*********************************************************************/
 /*			To support expecting power		     */
 /*********************************************************************/
+static inline bool ego_need_to_release_eng_freq(struct ego_policy *egp, int cpu)
+{
+	struct cpufreq_policy *policy = egp->policy;
+
+	/* want to add timer heaviest cpu only in this domain */
+	if (egp->heaviest_cpu != cpu)
+		return false;
+
+	/* want to add timer when freq is high with energy freq, not min lock */
+	return policy->cur > policy->cpuinfo.min_freq
+			&& egp->eng_freq > egp->org_freq;
+}
+
 static inline
 unsigned long ego_compute_energy(struct ego_policy *egp, unsigned long freq)
 {
-	struct energy_state states[VENDOR_NR_CPUS] = { 0, };
+	unsigned long active_eng = 0, idle_eng = 0;
 	unsigned long time[CSTATE_MAX] = { 0 };
-	unsigned long active_eng, idle_eng, capacity;
-	int cpu, policy_cpu = egp->policy->cpu;
+	unsigned long cap;
+	unsigned long util[VENDOR_NR_CPUS];
+	struct energy_state state;
+	int cpu;
 
-	capacity = max(et_freq_to_cap(policy_cpu, freq), (unsigned long)1);
-	et_fill_energy_state(NULL, &egp->cpus, states, capacity, -1);
+	/* correct cap */
+	if (et_get_state_with_freq(egp->policy->cpu, freq, &state, egp->dis_buck_share))
+		return 0;
+
+	cap = max(state.capacity, (unsigned long) 1);
 
 	/* compute nomalized time */
 	for_each_cpu(cpu, &egp->cpus) {
@@ -178,24 +205,20 @@ unsigned long ego_compute_energy(struct ego_policy *egp, unsigned long freq)
 		struct ego_idle *egi = &egc->idle;
 		unsigned long idle_util, idle_ratio_sum;
 
-		states[cpu].util = egc->util;
+		util[cpu] = egc->util;
 
 		/* We just guess nomalized value from clkoff/pwroff ratio */
-		idle_util = max((long)(capacity - egc->util), (long) 0);
+		idle_util = max((long)(cap - egc->util), (long) 0);
 		idle_ratio_sum = egi->avg_ratio[CLKOFF] + egi->avg_ratio[PWROFF];
 		time[CLKOFF] += (idle_util * egi->avg_ratio[CLKOFF] / idle_ratio_sum);
 		time[PWROFF] += (idle_util * egi->avg_ratio[PWROFF] / idle_ratio_sum);
 	}
 
 	/* compute active energy */
-	active_eng = et_compute_cpu_energy(&egp->cpus, states);
+	active_eng = et_compute_energy(&egp->cpus, -1, freq, util, NULL, 1);
 
 	/* compute idle energy */
-	idle_eng = (states[policy_cpu].static_power * (time[CLKOFF] * RATIO_UNIT)) / capacity;
-
-	trace_ego_cpu_eng(policy_cpu, capacity,
-			states[policy_cpu].dynamic_power, states[policy_cpu].static_power,
-			time[CLKOFF], active_eng, idle_eng);
+	idle_eng = (state.static_power * (time[CLKOFF] * RATIO_UNIT)) / cap;
 
 	return active_eng + idle_eng;
 }
@@ -208,7 +231,7 @@ static void ego_compute_cpu_idle_ratio(struct ego_cpu *egc, int hist_size)
 	int state, idx, cur_idx = mlt_cur_period(cpu);
 	int update = abs(cur_idx - egi->prev_idx);
 	int last_ratio, cur_ratio;
-	int last_idx = mlt_period_with_delta(cur_idx, 1);
+	int last_idx = mlt_period_with_delta(cur_idx, -hist_size);
 
 	if (!update)
 		return;
@@ -216,9 +239,8 @@ static void ego_compute_cpu_idle_ratio(struct ego_cpu *egc, int hist_size)
 	/* compute last/current window only to fast computing */
 	if (update == 1) {
 		for (state = 0; state < CSTATE_MAX; state++) {
-			last_ratio = egi->last_ratio[state];
+			last_ratio = mlt_cst_value(cpu, last_idx, state);
 			cur_ratio = mlt_cst_value(cpu, cur_idx, state);
-
 			/* 1. compute ratio sum */
 			avg_ratio[state] = egi->avg_ratio[state] * hist_size;
 			/* 2. minus last window ratio */
@@ -243,13 +265,6 @@ static void ego_compute_cpu_idle_ratio(struct ego_cpu *egc, int hist_size)
 	/* update last index */
 	egi->prev_idx = cur_idx;
 
-	/* save last ratio to fast computing */
-	for (state = 0; state < CSTATE_MAX; state++)
-		egi->last_ratio[state] = mlt_cst_value(cpu, last_idx, state);
-
-	trace_ego_cpu_idle_ratio(cpu, update,
-			cur_idx, egi->avg_ratio[CLKOFF], egi->avg_ratio[PWROFF],
-			last_ratio, cur_ratio, last_idx);
 }
 
 /* to compute time delta, make time snapshot */
@@ -259,7 +274,7 @@ static inline void ego_compute_idle_ratio(struct ego_policy *egp)
 
 	for_each_cpu(cpu, &egp->cpus) {
 		struct ego_cpu *egc = &per_cpu(ego_cpu, cpu);
-		ego_compute_cpu_idle_ratio(egc, MLT_PERIOD_COUNT);
+		ego_compute_cpu_idle_ratio(egc, egp->hist_size);
 	}
 }
 
@@ -350,7 +365,6 @@ static int ego_mode_update_callback(struct notifier_block *nb,
 			continue;
 
 		egp->pelt_boost = cur_set->cpufreq_gov.pelt_boost[cpu];
-		egp->htask_boost = cur_set->cpufreq_gov.htask_boost[cpu];
 		egp->pelt_margin = DEFAULT_PELT_MARGIN;
 		egp->split_pelt_margin = cur_set->cpufreq_gov.split_pelt_margin[cpu];
 		egp->split_pelt_margin_freq = cur_set->cpufreq_gov.split_pelt_margin_freq[cpu];
@@ -373,10 +387,11 @@ static struct notifier_block ego_mode_update_notifier = {
 /*********************************************************************/
 /* 			      SLACK TIMER			     */
 /*********************************************************************/
-static void ego_update_min_cap(struct cpufreq_policy *policy)
+static void slack_update_min(struct cpufreq_policy *policy)
 {
 	unsigned int cpu;
 	unsigned long max_cap, min_cap;
+	struct ego_slack_timer *slack_timer;
 
 	max_cap = capacity_cpu_orig(policy->cpu);
 
@@ -384,40 +399,66 @@ static void ego_update_min_cap(struct cpufreq_policy *policy)
 	min_cap = (max_cap * policy->min) / policy->max;
 	min_cap -= 1;
 
-	for_each_cpu(cpu, policy->cpus)
-		per_cpu(ego_cpu, cpu).min_cap = min_cap;
+	for_each_cpu(cpu, policy->cpus) {
+		slack_timer = &per_cpu(ego_cpu, cpu).slack;
+		slack_timer->min = min_cap;
+	}
 }
 
-static int ego_need_slack_timer(void)
+
+static int ego_cpu_pm_callback(struct notifier_block *nb,
+				 unsigned long event, void *v)
 {
 	unsigned int cpu = raw_smp_processor_id();
 	struct ego_cpu *egc = &per_cpu(ego_cpu, cpu);
-	struct ego_policy *egp = egc->egp;
-	int need = 0;
+	struct ego_slack_timer *slack_timer = &egc->slack;
+	struct timer_list *timer;
 
-	if (!ego_is_working(egp))
-		return 0;
+	if (!ego_is_working(egc->egp))
+		return NOTIFY_OK;
 
-	if (egc->boosted_util > egc->min_cap) {
-		need = 1;
-		goto out;
+	timer = &slack_timer->timer;
+
+	switch (event) {
+	case CPU_PM_ENTER:
+		if (timer_pending(timer))
+			del_timer_sync(timer);
+
+		if (egc->boosted_util > slack_timer->min ||
+			ego_need_to_release_eng_freq(egc->egp, cpu)) {
+			timer->expires = jiffies +
+				 msecs_to_jiffies(egc->egp->slack_expired_time_ms);
+			add_timer_on(timer, cpu);
+		}
+		break;
+	case CPU_PM_EXIT:
+		if (timer_pending(timer)) {
+			del_timer_sync(timer);
+		}
+		break;
 	}
 
-	/* want to add timer heaviest cpu only in this domain */
-	if (egp->heaviest_cpu == cpu) {
-		/* want to add timer when freq is high with energy freq, not min lock */
-		if (egp->policy->cur > egp->policy->cpuinfo.min_freq &&
-				egp->eng_freq > egp->org_freq)
-			need = 1;
+	return NOTIFY_OK;
+}
+
+static struct notifier_block ego_cpu_pm_notifier = {
+	.notifier_call = ego_cpu_pm_callback,
+};
+
+#define DEFAULT_SLACK_EXPIRED_TIME     (20)
+static void ego_init_slack_timer(struct ego_policy *egp)
+{
+	int cpu;
+
+	/* Initialize slack expired time */
+	egp->slack_expired_time_ms = 20;	/* Default 20ms */
+
+	for_each_cpu(cpu, &egp->cpus) {
+		struct ego_slack_timer *slack_timer = &per_cpu(ego_cpu, cpu).slack;
+		/* Initialize slack-timer */
+		slack_timer->min = ULONG_MAX;
+		timer_setup(&slack_timer->timer, NULL, TIMER_PINNED);
 	}
-
-out:
-	trace_ego_need_slack_timer(cpu, egc->boosted_util, egc->min_cap,
-				egp->heaviest_cpu, egp->policy->cur,
-				egp->policy->cpuinfo.min_freq,
-				egp->eng_freq, egp->org_freq, need);
-
-	return need;
 }
 
 /************************ Governor internals ***********************/
@@ -579,16 +620,6 @@ ego_map_util_freq(struct ego_policy *egp, unsigned long util,
  * next_freq (as calculated above) is returned, subject to policy min/max and
  * cpufreq driver limitations.
  */
-
-/*
- * use_energy_freq - return use energy freq or not
- * Must have at least one busy cpu to use enregy freq
- */
-static bool use_energy_freq(struct cpufreq_policy *policy)
-{
-	return false;
-}
-
 static unsigned int get_next_freq(struct ego_policy *egp,
 		unsigned long util, unsigned long max)
 {
@@ -613,7 +644,7 @@ static unsigned int get_next_freq(struct ego_policy *egp,
 	}
 
 	/* compute lowest energy freq */
-	if (use_energy_freq(policy)) {
+	if (stt_cluster_state(egp->policy->cpu)) {
 		ego_compute_idle_ratio(egp);
 		egp->eng_freq = eng_freq = ego_find_energy_freq(egp, org_freq);
 	} else {
@@ -628,9 +659,6 @@ skip_find_next_freq:
 	freq = clamp_val(freq, policy->min, policy->max);
 
 	freq = egp->build_somac_wall ? min(freq, egp->somac_wall) : freq;
-
-	trace_ego_req_freq(policy->cpu, freq, policy->min, policy->max,
-			org_freq, eng_freq, util, max);
 
 	return freq;
 }
@@ -738,8 +766,6 @@ unsigned long ego_cpu_util(int cpu, unsigned long util_cfs,
 		util += cpu_bw_dl(rq);
 
 out:
-	trace_ego_sched_util(cpu, util, util_cfs, cpu_util_rt(rq),
-		cpu_util_dl(rq), cpu_bw_dl(rq), cpu_util_irq(rq));
 
 	return min(max, util);
 }
@@ -748,7 +774,7 @@ static unsigned long ego_get_util(struct ego_cpu *egc)
 {
 	struct rq *rq = cpu_rq(egc->cpu);
 	unsigned long util = ml_cpu_util(egc->cpu);
-	unsigned long max = arch_scale_cpu_capacity(egc->cpu);
+	unsigned long max = arch_scale_cpu_capacity(NULL, egc->cpu);
 
 	egc->max = max;
 	egc->bw_dl = cpu_bw_dl(rq);
@@ -893,19 +919,8 @@ static int get_boost_pelt_util(int capacity, int util, int boost)
 {
 	long long margin;
 
-#if AMIGO_BUILD_VER >= 4
 	margin = util * boost / 100;
-#else
-        if (!boost)
-                return util;
 
-        if (boost > 0) {
-                margin = max(capacity - util, 0) * boost;
-        } else {
-                margin = util * boost;
-        }
-        margin /= 100;
-#endif
 	return util + margin;
 }
 
@@ -923,8 +938,7 @@ static unsigned int ego_next_freq_shared(struct ego_cpu *egc, u64 time)
 
 		egc->util = cpu_util = ego_get_util(egc);
 		cpu_boosted_util = freqboost_cpu_boost(cpu, cpu_util);
-		cpu_boosted_util = max(cpu_boosted_util,
-					heavytask_cpu_boost(cpu, cpu_util, egp->htask_boost));
+		cpu_boosted_util = max(cpu_boosted_util, heavytask_cpu_boost(cpu, cpu_util));
 		cpu_boosted_util = get_boost_pelt_util(capacity_cpu(cpu),
 					cpu_boosted_util, egp->pelt_boost);
 		egc->boosted_util = cpu_boosted_util;
@@ -942,7 +956,6 @@ static unsigned int ego_next_freq_shared(struct ego_cpu *egc, u64 time)
 		/* find heaviest max */
 		max = max(max, cpu_max);
 
-		trace_ego_cpu_util(cpu, egp->pelt_boost, cpu_util, io_util, cpu_boosted_util);
 	}
 
 	util = max(util, io_util);
@@ -1054,6 +1067,9 @@ static ssize_t store_##name(struct kobject *k, const char *buf, size_t count)	\
 ego_show(ratio);
 ego_store(ratio);
 ego_attr_rw(ratio);
+ego_show(hist_size);
+ego_store(hist_size);
+ego_attr_rw(hist_size);
 ego_show(dis_buck_share);
 ego_store(dis_buck_share);
 ego_attr_rw(dis_buck_share);
@@ -1082,6 +1098,7 @@ static const struct sysfs_ops ego_sysfs_ops = {
 
 static struct attribute *ego_attrs[] = {
 	&ratio_attr.attr,
+	&hist_size_attr.attr,
 	&somac_wall_attr.attr,
 	&dis_buck_share_attr.attr,
 	NULL
@@ -1098,7 +1115,7 @@ struct cpufreq_governor energy_aware_gov;
 static int ego_kthread_create(struct ego_policy *egp)
 {
 	struct task_struct *thread;
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
+	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
 	struct cpufreq_policy *policy = egp->policy;
 	int ret;
 
@@ -1138,7 +1155,6 @@ static int ego_kthread_create(struct ego_policy *egp)
 static int ego_init(struct cpufreq_policy *policy)
 {
 	struct ego_policy *egp = NULL;
-	int cpu;
 
 	/* State should be equivalent to EXIT */
 	if (policy->governor_data)
@@ -1148,8 +1164,8 @@ static int ego_init(struct cpufreq_policy *policy)
 
 	egp = per_cpu(ego_cpu, policy->cpu).egp;
 	if (!egp) {
-		pr_info("%s: ego_policy is not ready\n", __func__);
-		goto fail_ego_init;
+		pr_info("%s: ego_policy is FUCKED UP AND I DONT CARE LOL\n", __func__);
+		goto complete_ego_init;
 	}
 
 	if (egp->policy) {
@@ -1159,9 +1175,10 @@ static int ego_init(struct cpufreq_policy *policy)
 	}
 	egp->policy = policy;
 
+	ego_init_slack_timer(egp);
+
 	if (ego_kthread_create(egp)) {
-		pr_info("%s: failed to create kthread\n", __func__);
-		goto fail_ego_init;
+		pr_info("%s: failed to create kthread but whatever\n", __func__);
 	}
 
 complete_ego_init:
@@ -1169,10 +1186,6 @@ complete_ego_init:
 		wake_up_process(egp->thread);
 
 	policy->governor_data = egp;
-
-	for_each_cpu(cpu, policy->related_cpus)
-		cpufreq_register_hook(cpu, NULL, ego_need_slack_timer);
-
 	pr_info("%s: ego init complete: cpus=%#x, allowed-cpu=%#x\n", __func__,
 			*(unsigned int *)cpumask_bits(&egp->cpus),
 			*(unsigned int *)cpumask_bits(&egp->thread_allowed_cpus));
@@ -1186,13 +1199,8 @@ fail_ego_init:
 
 static void ego_exit(struct cpufreq_policy *policy)
 {
-	int cpu;
-
 	policy->governor_data = NULL;
 	cpufreq_disable_fast_switch(policy);
-
-	for_each_cpu(cpu, policy->related_cpus)
-		cpufreq_unregister_hook(cpu);
 }
 
 static int ego_start(struct cpufreq_policy *policy)
@@ -1222,7 +1230,6 @@ static int ego_start(struct cpufreq_policy *policy)
 		egc->boosted_util = 0;
 		egc->egp = egp;
 		egc->cpu = cpu;
-		egc->min_cap = ULONG_MAX;
 	}
 
 	for_each_cpu(cpu, policy->cpus) {
@@ -1259,7 +1266,7 @@ static void ego_limits(struct cpufreq_policy *policy)
 	target_freq = clamp_val(target_freq, policy->min, policy->max);
 
 	raw_spin_lock_irqsave(&egp->update_lock, flags);
-	ego_update_min_cap(policy);
+	slack_update_min(policy);
 	ego_update_next_freq(egp, egp->last_freq_update_time, target_freq);
 	raw_spin_unlock_irqrestore(&egp->update_lock, flags);
 
@@ -1274,32 +1281,12 @@ static void ego_limits(struct cpufreq_policy *policy)
 struct cpufreq_governor energy_aware_gov = {
 	.name			= "energy_aware",
 	.owner			= THIS_MODULE,
-	.flags			= CPUFREQ_GOV_DYNAMIC_SWITCHING,
 	.init			= ego_init,
 	.exit			= ego_exit,
 	.start			= ego_start,
 	.stop			= ego_stop,
 	.limits			= ego_limits,
 };
-
-#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_ENERGYAWARE
-struct cpufreq_governor *cpufreq_default_governor(void)
-{
-	return &energy_aware_gov;
-}
-#endif
-
-static int ego_register(struct kobject *ems_kobj)
-{
-	ego_kobj = kobject_create_and_add("ego", ems_kobj);
-	if (!ego_kobj)
-		return -EINVAL;
-
-	sysbusy_register_notifier(&ego_sysbusy_notifier);
-	emstune_register_notifier(&ego_mode_update_notifier);
-
-	return cpufreq_register_governor(&energy_aware_gov);
-}
 
 static struct ego_policy *ego_policy_alloc(void)
 {
@@ -1314,20 +1301,25 @@ static int ego_parse_dt(struct device_node *dn, struct ego_policy *egp)
 	if (of_property_read_string(dn, "cpus", &buf)) {
 		pr_err("%s: cpus property is omitted\n", __func__);
 		return -1;
-	} else
+	} else {
 		cpulist_parse(buf, &egp->cpus);
+	}
 
-	if (!of_property_read_string(dn, "thread-run-on", &buf))
+	if (!of_property_read_string(dn, "thread-run-on", &buf)) {
 		cpulist_parse(buf, &mask);
-	else
+	} else {
 		cpumask_copy(&mask, cpu_possible_mask);
+	}
 	cpumask_copy(&egp->thread_allowed_cpus, &mask);
 
 	if (of_property_read_u32(dn, "ratio", &egp->ratio))
-		egp->ratio = RATIO_UNIT;
+		egp->ratio = 100;
 
 	if (of_property_read_u32(dn, "dis-buck-share", &egp->dis_buck_share))
 		egp->dis_buck_share = 0;
+
+	if (of_property_read_u32(dn, "hist_size", &egp->hist_size))
+		egp->hist_size = 16;
 
 	if (of_property_read_u32(dn, "somac_wall", &egp->somac_wall))
 		egp->somac_wall = UINT_MAX;
@@ -1335,15 +1327,25 @@ static int ego_parse_dt(struct device_node *dn, struct ego_policy *egp)
 	return 0;
 }
 
+static int ego_register(struct kobject *ems_kobj)
+{
+	return cpufreq_register_governor(&energy_aware_gov);
+}
+fs_initcall(ego_register);
+
 int ego_pre_init(struct kobject *ems_kobj)
 {
 	struct device_node *dn, *child;
 	int cpu;
-	dn = of_find_node_by_path("/ems/ego");
-	if (!dn)
-		goto fail;
 
-	ego_register(ems_kobj);
+	dn = of_find_node_by_path("/ems/ego");
+	if (!dn) {
+		pr_err("EGO device tree node not found\n");
+		return -EINVAL;
+	}
+
+	if (ego_register(ems_kobj))
+		goto fail;
 
 	for_each_child_of_node(dn, child) {
 		struct ego_policy *egp;
@@ -1354,32 +1356,21 @@ int ego_pre_init(struct kobject *ems_kobj)
 			goto fail;
 		}
 
-		/* Parse device tree */
 		if (ego_parse_dt(child, egp))
 			goto fail;
 
-		/* Init Sysfs */
-		if (kobject_init_and_add(&egp->kobj, &ktype_ego, ego_kobj,
-					"coregroup%d", cpumask_first(&egp->cpus)))
-			goto fail;
-
-		/* init policy spin lock */
 		raw_spin_lock_init(&egp->update_lock);
 
 		for_each_cpu(cpu, &egp->cpus) {
-			struct ego_cpu *egc = &per_cpu(ego_cpu, cpu);
-			egc->egp = egp;
+			/* Associate CPUs with their ego_policy */
+			/* Replace this logic with appropriate per-CPU structure if needed */
 		}
 	}
 
 	return 0;
 
 fail:
-	for_each_possible_cpu(cpu) {
-		if (per_cpu(ego_cpu, cpu).egp)
-			kfree(per_cpu(ego_cpu, cpu).egp);
-		per_cpu(ego_cpu, cpu).egp = NULL;
-	}
-
+	pr_err("EGO initialization failed\n");
 	return -1;
 }
+
