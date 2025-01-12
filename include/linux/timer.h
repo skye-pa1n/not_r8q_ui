@@ -80,6 +80,9 @@ struct timer_list {
 /*
  * LOCKDEP and DEBUG timer interfaces.
  */
+ 
+void init_timer_pinned(struct timer_list *timer);
+
 void init_timer_key(struct timer_list *timer,
 		    void (*func)(struct timer_list *), unsigned int flags,
 		    const char *name, struct lock_class_key *key);
@@ -135,7 +138,8 @@ static inline void init_timer_on_stack_key(struct timer_list *timer,
 
 #define timer_setup_on_stack(timer, callback, flags)		\
 	__init_timer_on_stack((timer), (callback), (flags))
-
+	
+	
 #ifdef CONFIG_DEBUG_OBJECTS_TIMERS
 extern void destroy_timer_on_stack(struct timer_list *timer);
 #else

@@ -48,6 +48,9 @@ enum sysbusy_state {
 #define SYSBUSY_CHECK_BOOST	(0)
 #define SYSBUSY_STATE_CHANGE	(1)
 
+/* frt */
+extern unsigned int frt_disable_cpufreq;
+
 /*
  * EMStune
  */

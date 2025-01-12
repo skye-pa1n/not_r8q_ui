@@ -33,6 +33,50 @@ DECLARE_EVENT_CLASS(cpu,
 		  (unsigned long)__entry->cpu_id)
 );
 
+TRACE_EVENT(sugov_slack_func,
+
+	TP_PROTO(int cpu),
+
+	TP_ARGS(cpu),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+	),
+
+	TP_printk("cpu=%d SLACK EXPIRED", __entry->cpu)
+);
+
+TRACE_EVENT(sugov_slack,
+
+	TP_PROTO(int cpu, unsigned long util,
+		unsigned long min, unsigned long action, int ret),
+
+	TP_ARGS(cpu, util, min, action, ret),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long, util)
+		__field(unsigned long, min)
+		__field(unsigned long, action)
+		__field(int, ret)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util = util;
+		__entry->min = min;
+		__entry->action = action;
+		__entry->ret = ret;
+	),
+
+	TP_printk("cpu=%d util=%ld min=%ld action=%ld ret=%d", __entry->cpu,
+			__entry->util, __entry->min, __entry->action, __entry->ret)
+);
+
 DEFINE_EVENT(cpu, cpu_idle,
 
 	TP_PROTO(unsigned int state, unsigned int cpu_id),
@@ -213,6 +257,30 @@ TRACE_EVENT(cpu_frequency_switch_end,
 	),
 
 	TP_printk("cpu_id=%lu", (unsigned long)__entry->cpu_id)
+);
+
+TRACE_EVENT(cpu_frequency_sugov,
+
+	TP_PROTO(unsigned int freq, unsigned long util, unsigned int cpu_id),
+
+	TP_ARGS(freq, util, cpu_id),
+
+	TP_STRUCT__entry(
+		__field(	u32,		freq	)
+		__field(	u32,		util	)
+		__field(	u32,		cpu_id	)
+	),
+
+	TP_fast_assign(
+		__entry->freq = freq;
+		__entry->util = util;
+		__entry->cpu_id = cpu_id;
+	),
+
+	TP_printk("freq=%lu util=%lu cpu_id=%lu",
+		  (unsigned long)__entry->freq,
+		  (unsigned long)__entry->util,
+		  (unsigned long)__entry->cpu_id)
 );
 
 TRACE_EVENT(device_pm_callback_start,

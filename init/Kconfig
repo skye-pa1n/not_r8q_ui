@@ -1258,7 +1258,16 @@ config SCHED_NEMS
 	  SCHEDTUNE.
 
 	  If unsure, say N.
-
+	  
+config SCHED_EMS
+	tristate "Exynos Mobile Scheduler"
+	depends on SMP
+	default n
+	help
+	  Placeholder
+	  
+	  If unsure, say N.
+	
 config SCHED_NEMS_TUNE
 	bool "Tuner for Not Exynos Mobile Scheduler"
 	depends on SCHED_EMS

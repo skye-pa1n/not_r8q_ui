@@ -157,6 +157,11 @@ int cpu_cluster_pm_enter(void)
 }
 EXPORT_SYMBOL_GPL(cpu_cluster_pm_enter);
 
+int cpu_pm_enter_pre(void)
+{
+	return cpu_pm_notify(CPU_PM_ENTER_PREPARE, -1, NULL);
+}
+EXPORT_SYMBOL_GPL(cpu_pm_enter_pre);
 /**
  * cpu_cluster_pm_exit - CPU cluster low power exit notifier
  *
@@ -178,6 +183,11 @@ int cpu_cluster_pm_exit(void)
 }
 EXPORT_SYMBOL_GPL(cpu_cluster_pm_exit);
 
+int cpu_pm_exit_post(void)
+{
+	return cpu_pm_notify(CPU_PM_EXIT_POST, -1, NULL);
+}
+EXPORT_SYMBOL_GPL(cpu_pm_exit_post);
 #ifdef CONFIG_PM
 static int cpu_pm_suspend(void)
 {

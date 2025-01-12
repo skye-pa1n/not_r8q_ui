@@ -26,6 +26,8 @@
 #include <linux/rbtree_augmented.h>
 #include "sched.h"
 
+#include "linux/ems.h"
+
 #ifdef CONFIG_PERF_MGR
 #include <linux/cpufreq.h>
 #include <linux/percpu.h>
@@ -4086,6 +4088,18 @@ static void detach_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 	trace_sched_load_cfs_rq(cfs_rq);
 }
 
+unsigned long sched_get_rt_rq_util(int cpu)
+{
+	struct rt_rq *rt_rq;
+	unsigned int frt_disable_cpufreq;
+
+	if (frt_disable_cpufreq)
+		return 0;
+
+	rt_rq = &(cpu_rq(cpu)->rt);
+	return rt_rq->avg.util_avg;
+}
+
 /*
  * Optional action to be done while updating the load average
  */
@@ -5820,8 +5834,10 @@ static inline void update_overutilized_status(struct rq *rq)
 		set_sd_overutilized(sd);
 	rcu_read_unlock();
 }
+unsigned long boosted_cpu_util(int cpu, unsigned long other_util);
 #else
 static inline void update_overutilized_status(struct rq *rq) { }
+#define boosted_cpu_util(cpu, other_util) cpu_util_freq(cpu)
 #endif
 
 /* Runqueue only has SCHED_IDLE tasks enqueued */

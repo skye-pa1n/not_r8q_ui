@@ -126,6 +126,9 @@ struct cpufreq_policy {
 	 * scaling driver (0, which is the default, means no preference).
 	 */
 	unsigned int		transition_delay_us;
+	
+	/* Boost switch for tasks with p->in_iowait set */
+	bool            iowait_boost_enable;
 
 	/*
 	 * Remote DVFS flag (Not added to the driver structure as we don't want

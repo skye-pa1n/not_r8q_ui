@@ -2,7 +2,7 @@
 ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_clock.o = $(CC_FLAGS_FTRACE)
 endif
-ccflags-y := -Wno-implicit-function-declaration -Wno-int-conversion
+ccflags-y := -Wno-implicit-function-declaration -Wno-int-conversion -Wno-incompatible-function-pointer-types
 # These files are disabled because they produce non-interesting flaky coverage
 # that is not a function of syscall inputs. E.g. involuntary context switches.
 KCOV_INSTRUMENT := n
@@ -39,4 +39,4 @@ obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_CPU_ISOLATION) += isolation.o
 obj-$(CONFIG_SCHED_CORE_CTL) += core_ctl.o
 obj-$(CONFIG_PSI) += psi.o
-obj-$(CONFIG_SCHED_NEMS) += nems/
+obj-$(CONFIG_SCHED_NEMS) += nems/ cpufreq_nobody_sched.o
