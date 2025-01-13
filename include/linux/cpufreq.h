@@ -609,8 +609,10 @@ struct governor_attr {
 struct cpufreq_frequency_table {
 	unsigned int	flags;
 	unsigned int	driver_data; /* driver specific data, not used by core */
-	unsigned int	frequency; /* kHz - doesn't need to be in ascending
-				    * order */
+	unsigned int	frequency; /* kHz - doesn't need to be in ascending order */
+	unsigned int	volt; /* mV - Probally the real performance gainer in newer chips */
+	unsigned int	lval; /* ??? - driver specific data used by qcom 
+	                              * method to calculate how to step cpu freqs (idk) */
 };
 
 #if defined(CONFIG_CPU_FREQ) && defined(CONFIG_PM_OPP)

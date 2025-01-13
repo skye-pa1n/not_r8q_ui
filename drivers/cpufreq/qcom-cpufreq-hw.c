@@ -29,7 +29,7 @@
 #define CLK_HW_DIV			2
 #define GT_IRQ_STATUS			BIT(2)
 #define MAX_FN_SIZE			20
-#define LIMITS_POLLING_DELAY_MS		10
+#define LIMITS_POLLING_DELAY_MS		4
 
 #define CYCLE_CNTR_OFFSET(c, m, acc_count)				\
 			(acc_count ? ((c - cpumask_first(m) + 1) * 4) : 0)
@@ -76,7 +76,7 @@ struct skipped_freq {
 };
 
 struct cpufreq_qcom {
-	struct cpufreq_frequency_table *table;
+	struct cpufreq_frequency_table *table, *lval;
 	void __iomem *reg_bases[REG_ARRAY_SIZE];
 	cpumask_t related_cpus;
 	unsigned int max_cores;
@@ -561,8 +561,11 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 
 		cur_freq = c->table[i].frequency;
 
-		dev_dbg(dev, "index=%d freq=%d, core_count %d\n",
-			i, c->table[i].frequency, core_count);
+				// dev_dbg(dev, "index=%d freq=%d, core_count %d\n",
+				// i, c->table[i].frequency, core_count);
+		dev_info(dev, "cpu=%lu, index=%d, freq=%d, core_count=%d, src=%d, lval=%d, volt=%d\n", 
+				cpu, i, c->table[i].frequency, core_count,
+				src, lval, volt);
 
 		if (!of_find_freq(of_table, of_len, c->table[i].frequency)) {
 			c->table[i].frequency = CPUFREQ_ENTRY_INVALID;
@@ -601,7 +604,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				}
 				break;
 			}
-		}
+	    }
 
 		prev_cc = core_count;
 		prev_freq = cur_freq;
@@ -612,6 +615,30 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				continue;
 			dev_pm_opp_add(cpu_dev, c->table[i].frequency * 1000,
 							volt);
+#ifdef CPU_TEST
+		    if (cpu == 0) {
+		        c->table[19].frequency = 2016000;
+		        c->table[19].lval = 112;
+		        c->table[19].volt = 812500;
+		    } else if (cpu == 4) {
+		        c->table[0].frequency = 300000;
+		        c->table[0].lval = 12;
+		        c->table[0].volt = 487500;
+		        c->table[1].frequency = 480000;
+		        c->table[1].lval = 25;
+		        c->table[1].volt = 512500;
+		        c->table[2].frequency = 633600;
+		        c->table[2].lval = 30;
+		        c->table[2].volt = 582500;
+		        c->table[20].frequency = 2572000;
+ 		        c->table[20].lval = 132;
+ 		        c->table[20].volt = 950000;
+		    } else if (cpu == 7) {
+ 		        c->table[21].frequency = 3187200;
+ 		        c->table[21].lval = 158;
+ 		        c->table[20].volt = 942500;
+		    }	
+#endif
 		}
 	}
 
