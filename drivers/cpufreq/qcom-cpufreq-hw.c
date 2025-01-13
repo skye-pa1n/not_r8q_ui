@@ -406,6 +406,8 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	if (ret <= 0)
 		dev_err(cpu_dev, "OPP table is not ready\n");
 
+	dev_pm_opp_of_register_em(policy->cpus);
+	
 	policy->fast_switch_possible = true;
 	policy->freq_table = c->table;
 	policy->driver_data = c;
