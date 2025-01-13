@@ -1329,6 +1329,9 @@ static int ego_parse_dt(struct device_node *dn, struct ego_policy *egp)
 
 static int ego_register(struct kobject *ems_kobj)
 {
+	sysbusy_register_notifier(&ego_sysbusy_notifier);
+	emstune_register_notifier(&ego_mode_update_notifier);
+	
 	return cpufreq_register_governor(&energy_aware_gov);
 }
 fs_initcall(ego_register);
