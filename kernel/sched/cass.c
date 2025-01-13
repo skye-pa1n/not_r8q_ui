@@ -17,12 +17,6 @@
  * criteria to determine the better CPU to wake a task upon between CPUs that
  * have the same relative utilization. This way, single-core performance,
  * latency, and cache affinity are all optimized where possible.
- *
- * CASS doesn't feature explicit energy awareness but its basic load balancing
- * principle results in decreased overall energy, often better than what is
- * possible with explicit energy awareness. By fairly balancing load based on
- * relative utilization, all CPUs are kept at their lowest P-state necessary to
- * satisfy the overall load at any given moment.
  */
 
 struct cass_cpu_cand {
@@ -30,6 +24,7 @@ struct cass_cpu_cand {
 	unsigned int exit_lat;
 	unsigned long cap;
 	unsigned long util;
+        unsigned long raw_util;
 };
 
 static __always_inline
@@ -40,7 +35,7 @@ unsigned long cass_cpu_util(int cpu, bool sync)
 
 	/* Deduct @current's util from this CPU if this is a sync wake */
 	if (sync && cpu == smp_processor_id())
-		sub_positive(&util, task_util(current));
+		lsub_positive(&util, task_util(current));
 
 	if (sched_feat(UTIL_EST))
 		util = max_t(unsigned long, util,
@@ -52,15 +47,18 @@ unsigned long cass_cpu_util(int cpu, bool sync)
 /* Returns true if @a is a better CPU than @b */
 static __always_inline
 bool cass_cpu_better(const struct cass_cpu_cand *a,
-		     const struct cass_cpu_cand *b,
-		     int prev_cpu, bool sync)
+		     const struct cass_cpu_cand *b, int prev_cpu, 
+		     bool sync, unsigned long energy[NR_CPUS], struct task_struct *p)
 {
+#define cass_cmp_r(a, b, c) ({ res = ((a) - (b)) * (abs((a) - (b)) > (c)); })
 #define cass_cmp(a, b) ({ res = (a) - (b); })
 #define cass_eq(a, b) ({ res = (a) == (b); })
 	long res;
+	int boost = schedtune_task_boost(p);
+	int latency_sensitive = schedtune_prefer_high_cap(p);
 
-	/* Prefer the CPU with lower relative utilization */
-	if (cass_cmp(b->util, a->util))
+	/* Prefer the CPU with higher cap and lower utilization */
+	if (boost && cass_cmp_r(a->cap - a->raw_util, b->cap - b->raw_util, 64))
 		goto done;
 
 	/* Prefer the current CPU for sync wakes */
@@ -68,12 +66,12 @@ bool cass_cpu_better(const struct cass_cpu_cand *a,
 		     !cass_cmp(b->cpu, smp_processor_id())))
 		goto done;
 
-	/* Prefer the CPU with higher capacity */
-	if (cass_cmp(a->cap, b->cap))
+	/* Prefer the CPU with lower idle exit latency */
+	if (cass_cmp_r(b->exit_lat, a->exit_lat, 1 + !latency_sensitive * 99))
 		goto done;
 
-	/* Prefer the CPU with lower idle exit latency */
-	if (cass_cmp(b->exit_lat, a->exit_lat))
+	/* Prefer lower energy consumption CPU */
+	if (cass_cmp_r(energy[b->cpu], energy[a->cpu], energy[b->cpu] >> 4))
 		goto done;
 
 	/* Prefer the previous CPU */
@@ -83,6 +81,22 @@ bool cass_cpu_better(const struct cass_cpu_cand *a,
 	/* Prefer the CPU that shares a cache with the previous CPU */
 	if (cass_cmp(cpus_share_cache(a->cpu, prev_cpu),
 		     cpus_share_cache(b->cpu, prev_cpu)))
+		goto done;
+
+	/* Prefer the CPU with lower relative utilization */
+	if (cass_cmp(b->util, a->util))
+		goto done;
+
+	/* Prefer the CPU with higher capacity */
+	if (cass_cmp(a->cap, b->cap))
+		goto done;
+
+        /* Prefer the CPU with lower idle exit latency */
+        if (cass_cmp(b->exit_lat, a->exit_lat))
+                goto done;
+
+	/* Prefer lower energy consumption CPU */
+	if (cass_cmp(energy[b->cpu], energy[a->cpu]))
 		goto done;
 
 	/* @a isn't a better CPU than @b. @res must be <=0 to indicate such. */
@@ -95,29 +109,43 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 {
 	/* Initialize @best such that @best always has a valid CPU at the end */
 	struct cass_cpu_cand cands[2], *best = cands, *curr;
+	struct rq *rq = cpu_rq(smp_processor_id());
+	unsigned long energy[NR_CPUS] = {0};
 	struct cpuidle_state *idle_state;
+	cpumask_t candidates = {};
+	struct perf_domain *pd;
 	bool has_idle = false;
 	unsigned long p_util;
 	int cidx = 0, cpu;
+
+	/* Get candidate CPUs */
+	cpumask_and(&candidates, &p->cpus_allowed, cpu_active_mask);
+
+	/* Calculate energy of candidate cpu */
+	pd = rcu_dereference(rq->rd->pd);
+	if (pd)
+		compute_energy_change(p, pd, prev_cpu, &candidates, energy);
 
 	/* Get the utilization for this task */
 	p_util = task_util_est(p);
 
 	/*
-	 * Find the best CPU to wake @p on. The RCU read lock is needed for
-	 * idle_get_state().
+	 * Find the best CPU to wake @p on. Although idle_get_state() requires
+	 * an RCU read lock, an RCU read lock isn't needed because we're not
+	 * preemptible and RCU-sched is unified with normal RCU. Therefore,
+	 * non-preemptible contexts are implicitly RCU-safe.
 	 */
-	rcu_read_lock();
-	for_each_cpu_and(cpu, &p->cpus_allowed, cpu_active_mask) {
+	for_each_cpu(cpu, &candidates) {
 		/* Use the free candidate slot */
 		curr = &cands[cidx];
 		curr->cpu = cpu;
 
 		/*
-		 * Check if this CPU is idle. For sync wakes, always treat the
-		 * current CPU as idle.
+		 * Check if this CPU is idle or only has SCHED_IDLE tasks. For
+		 * sync wakes, always treat the current CPU as idle.
 		 */
-		if ((sync && cpu == smp_processor_id()) || idle_cpu(cpu)) {
+		if ((sync && cpu == smp_processor_id()) ||
+		    available_idle_cpu(cpu) || sched_idle_cpu(cpu)) {
 			/* Discard any previous non-idle candidate */
 			if (!has_idle) {
 				best = curr;
@@ -142,7 +170,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		}
 
 		/* Get this CPU's utilization, possibly without @current */
-		curr->util = cass_cpu_util(cpu, sync);
+		curr->raw_util = cass_cpu_util(cpu, sync);
 
 		/*
 		 * Add @p's utilization to this CPU if it's not @p's CPU, to
@@ -150,7 +178,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		 * if @p were on it.
 		 */
 		if (cpu != task_cpu(p))
-			curr->util += p_util;
+			curr->raw_util += p_util;
 
 		/*
 		 * Get the current capacity of this CPU adjusted for thermal
@@ -159,19 +187,18 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		curr->cap = capacity_of(cpu);
 
 		/* Calculate the relative utilization for this CPU candidate */
-		curr->util = curr->util * SCHED_CAPACITY_SCALE / curr->cap;
+		curr->util = curr->raw_util * SCHED_CAPACITY_SCALE / curr->cap;
 
 		/* If @best == @curr then there's no need to compare them */
 		if (best == curr)
 			continue;
 
 		/* Check if this CPU is better than the best CPU found */
-		if (cass_cpu_better(curr, best, prev_cpu, sync)) {
+		if (cass_cpu_better(curr, best, prev_cpu, sync, energy, p)) {
 			best = curr;
 			cidx ^= 1;
 		}
 	}
-	rcu_read_unlock();
 
 	return best->cpu;
 }
