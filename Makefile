@@ -743,6 +743,12 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 		   -mllvm -polly-vectorizer=stripmine
 endif
 
+# Enable MLGO for register allocation. default, release, development
+KBUILD_CFLAGS	+= -mllvm -regalloc-enable-advisor=release \
+		   -mllvm -enable-local-reassign
+KBUILD_LDFLAGS	+= -mllvm -regalloc-enable-advisor=release \
+		   -mllvm -enable-local-reassign
+		   
 # CPU opts
 KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a77 -mfpu=neon-fp-armv8 -mfloat-abi=hard
 
