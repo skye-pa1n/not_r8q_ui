@@ -744,13 +744,13 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 endif
 
 # Enable MLGO for register allocation. default, release, development
-KBUILD_CFLAGS	+= -mllvm -regalloc-enable-advisor=release \
+KBUILD_CFLAGS	+= -mllvm -regalloc-enable-advisor=default \
 		   -mllvm -enable-local-reassign
-KBUILD_LDFLAGS	+= -mllvm -regalloc-enable-advisor=release \
+KBUILD_LDFLAGS	+= -mllvm -regalloc-enable-advisor=default \
 		   -mllvm -enable-local-reassign
 		   
 # CPU opts
-KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a77 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a77
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
