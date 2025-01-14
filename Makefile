@@ -744,10 +744,10 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 endif
 
 # Enable MLGO for register allocation. default, release, development
-KBUILD_CFLAGS	+= -mllvm -regalloc-enable-advisor=default \
-		   -mllvm -enable-local-reassign
-KBUILD_LDFLAGS	+= -mllvm -regalloc-enable-advisor=default \
-		   -mllvm -enable-local-reassign
+#KBUILD_CFLAGS	+= -mllvm -regalloc-enable-advisor=default \
+#		   -mllvm -enable-local-reassign
+#KBUILD_LDFLAGS	+= -mllvm -regalloc-enable-advisor=default \
+#		   -mllvm -enable-local-reassign
 		   
 # CPU opts
 KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a77
