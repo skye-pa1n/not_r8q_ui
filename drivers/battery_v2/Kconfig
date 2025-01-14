@@ -37,7 +37,7 @@ config BATTERY_SAMSUNG_DATA_FILE
 config SLOW_CHARGING_CURRENT_STANDARD
 	int "slow charging"
 	depends on BATTERY_SAMSUNG
-	default "1000"
+	default "3000"
 	help
 	 Value for standard of slow-charging.
 
