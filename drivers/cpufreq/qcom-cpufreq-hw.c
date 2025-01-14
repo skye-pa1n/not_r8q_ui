@@ -1007,4 +1007,3 @@ static int __init qcom_cpufreq_hw_init(void)
 device_initcall(qcom_cpufreq_hw_init);
 
 MODULE_DESCRIPTION("QCOM firmware-based CPU Frequency driver");
-
