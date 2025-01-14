@@ -743,6 +743,9 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 		   -mllvm -polly-vectorizer=stripmine
 endif
 
+# CPU opts
+KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a77 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
