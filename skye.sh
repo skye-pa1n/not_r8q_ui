@@ -21,7 +21,7 @@ cat $DTB_OUT/*.dtb > /home/skye/bomb/AnyKernel3/a14u.dtb
 
 make -j$(nproc --all) O=/home/skye/bomb/out ARCH=arm64 $KERNEL_MAKE_ENV $BUILD_ENV Image
 IMAGE="/home/skye/bomb/out/arch/arm64/boot/Image"
-cp $IMAGE /home/skye/bomb/AnyKernel3/ImageU
+cp $IMAGE /home/skye/bomb/AnyKernel3/Image
 
 cd /home/skye/bomb/AnyKernel3
 rm *.zip
