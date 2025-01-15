@@ -187,6 +187,20 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
 	irq_work_queue(&sg_policy->irq_work);
 }
 
+static __always_inline
+unsigned long apply_dvfs_headroom(int cpu, unsigned long util, unsigned long max_cap)
+{
+	unsigned long headroom;
+	if (!util || util >= max_cap || cpumask_test_cpu(cpu, cpu_prime_mask))
+		return util;
+	if (cpumask_test_cpu(cpu, cpu_lp_mask)) {
+		headroom = util + (util >> 1);
+	} else {
+		headroom = util + (util >> 2);
+	}
+	return headroom;
+}
+
 /**
  * get_next_freq - Compute a new frequency for a given cpufreq policy.
  * @sg_policy: schedutil policy object to compute the new frequency for.
@@ -216,7 +230,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
 
-	freq = map_util_freq(util, freq, max);
+	freq = apply_dvfs_headroom(NULL, freq, max);
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
