@@ -7,7 +7,8 @@
 #include <linux/rom_notifier.h>
 #include <linux/string.h>
 
-bool is_aosp __read_mostly = false;
+bool is_aosp = false;
+
 static int __init parse_aosp(char *str)
 {
 	if (!strncmp(str, "1", 1))
