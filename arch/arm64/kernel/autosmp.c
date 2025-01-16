@@ -123,27 +123,29 @@ static int get_cpu_loads(unsigned int cpu)
 {
     struct asmp_load_data *data = &per_cpu(asmp_data, cpu);
     u64 cur_wall_time, cur_idle_time;
-    unsigned int idle_time, wall_time;
-    unsigned int load = 0, max_load = 0;
+    s64 wall_time, idle_time;
+    unsigned int load = 0;
 
     cur_idle_time = get_cpu_idle_time(cpu, &cur_wall_time, 0);
-
-    wall_time = (unsigned int)(cur_wall_time - data->prev_cpu_wall);
+    wall_time = cur_wall_time - data->prev_cpu_wall;
+    idle_time = cur_idle_time - data->prev_cpu_idle;
     data->prev_cpu_wall = cur_wall_time;
-
-    idle_time = (unsigned int)(cur_idle_time - data->prev_cpu_idle);
     data->prev_cpu_idle = cur_idle_time;
 
-    if (unlikely(!wall_time || wall_time < idle_time))
-        return load;
+    if (wall_time <= 0 || idle_time < 0 || wall_time < idle_time) {
+        return 0;
+    }
 
-    load = 100 * (wall_time - idle_time) / wall_time;
+    /* Try to avoid precision loss */
+    load = (100 * (wall_time - idle_time) + (wall_time / 2)) / wall_time;
 
-    if (load > max_load)
-        max_load = load;
+    /* Clamp load to [0, 100] range for obvious reasons */
+    if (load > 100)
+        load = 100;
 
-    return max_load;
+    return load;
 }
+
 
 static void update_prev_idle(unsigned int cpu)
 {
