@@ -1,10 +1,10 @@
 /*
- * arch/arm/kernel/autosmp.c
+ * arch/arm64/kernel/autosmp.c
  *
- * automatically hotplug/unplug multiple cpu cores
+ * Automatically hotplug/unplug multiple cpu cores
  * based on cpu load and suspend state
  *
- * based on the msm_mpdecision code by
+ * Based on the msm_mpdecision code by
  * Copyright (c) 2012-2013, Dennis Rassmann <showp1984@gmail.com>
  *
  * Copyright (C) 2013-2014, Rauf Gungor, http://github.com/mrg666
@@ -18,6 +18,7 @@
  * Copyright (C) 2025, João Batista (skye-pa1n) <sonicgames772@gmail.com>
  *       Fixup cpu cluster logic & add prime cluster logic in newer octa core processors.
  *       Based on Ryan Andri work "Adaptation for Octa core processor.".
+ *       Introduce a more precise cpu load calculation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,53 +72,54 @@ static struct asmp_param_struct {
     unsigned int cycle_up;
     unsigned int cycle_down;
 } asmp_param = {
-    .delay = 100,
+    .delay = 72,
     .scroff_single_core = true,
     .max_cpus_pr = 1, /* Max cpu Prime cluster ! */ 
     .max_cpus_bc = 3, /* Max cpu Big cluster ! */
     .max_cpus_lc = 4, /* Max cpu Little cluster ! */
-    .min_cpus_pr = 1, /* Minimum Prime cluster online */
-    .min_cpus_bc = 1, /* Minimum Big cluster online */
-    .min_cpus_lc = 3, /* Minimum Little cluster online */
-    .cpufreq_up_pr = 80,
-    .cpufreq_up_bc = 70,
-    .cpufreq_up_lc = 50,
-    .cpufreq_down_pr = 70,
-    .cpufreq_down_bc = 40,
-    .cpufreq_down_lc = 40,
+    .min_cpus_pr = 0, /* Minimum Prime cluster online */
+    .min_cpus_bc = 0, /* Minimum Big cluster online */
+    .min_cpus_lc = 1, /* Minimum Little cluster online */
+    .cpufreq_up_pr = 40,
+    .cpufreq_up_bc = 45,
+    .cpufreq_up_lc = 35,
+    .cpufreq_down_pr = 30,
+    .cpufreq_down_bc = 30,
+    .cpufreq_down_lc = 25,
     .cycle_up = 0,
-    .cycle_down = 1,
+    .cycle_down = 3,
 };
 
 static unsigned int cycle = 0, delay0 = 0;
 static unsigned long delay_jif = 0;
 int asmp_enabled __read_mostly = 0;
 
-static void asmp_online_cpus(unsigned int cpu)
+static void asmp_ctrl_cpu(unsigned int cpu, bool online)
 {
     struct device *dev;
-    int ret = 0;
+    int ret;
 
     lock_device_hotplug();
     dev = get_cpu_device(cpu);
-    ret = device_online(dev);
-    if (ret < 0)
-        pr_info("%s: failed online cpu %d\n", __func__, cpu);
+    if (dev) {
+        if (online)
+            device_online(dev);
+        else
+            device_offline(dev);
+    }
     unlock_device_hotplug();
+}
+
+static void asmp_online_cpus(unsigned int cpu)
+{
+    asmp_ctrl_cpu(cpu, true);
 }
 
 static void asmp_offline_cpus(unsigned int cpu)
 {
-    struct device *dev;
-    int ret = 0;
-
-    lock_device_hotplug();
-    dev = get_cpu_device(cpu);
-    ret = device_offline(dev);
-    if (ret < 0)
-        pr_info("%s: failed offline cpu %d\n", __func__, cpu);
-    unlock_device_hotplug();
+    asmp_ctrl_cpu(cpu, false);
 }
+
 
 static int get_cpu_loads(unsigned int cpu)
 {
@@ -140,8 +142,11 @@ static int get_cpu_loads(unsigned int cpu)
     load = (100 * (wall_time - idle_time) + (wall_time / 2)) / wall_time;
 
     /* Clamp load to [0, 100] range for obvious reasons */
-    if (load > 100)
+    if (load < 0) {
+        load = 0;
+    } else if (load > 100) {
         load = 100;
+    }
 
     return load;
 }
