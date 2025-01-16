@@ -1743,7 +1743,7 @@ static int lpm_probe(struct platform_device *pdev)
 	struct hrtimer *cpu_histtimer;
 	struct kobject *module_kobj = NULL;
 
-	get_online_cpus();
+	cpus_read_lock();
 	lpm_root_node = lpm_of_parse_cluster(pdev);
 
 	if (IS_ERR_OR_NULL(lpm_root_node)) {
@@ -1776,7 +1776,7 @@ static int lpm_probe(struct platform_device *pdev)
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
 	ret = cluster_cpuidle_register(lpm_root_node);
-	put_online_cpus();
+	cpus_read_unlock();
 	if (ret) {
 		pr_err("Failed to register with cpuidle framework\n");
 		goto failed;

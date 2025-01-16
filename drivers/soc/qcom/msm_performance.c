@@ -96,7 +96,7 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 	 * of other CPUs in the cluster once it is done for at least one CPU
 	 * in the cluster
 	 */
-	get_online_cpus();
+	cpus_read_lock();
 	for_each_cpu(i, limit_mask) {
 		i_cpu_stats = &per_cpu(msm_perf_cpu_stats, i);
 
@@ -109,7 +109,7 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 		for_each_cpu(j, policy.related_cpus)
 			cpumask_clear_cpu(j, limit_mask);
 	}
-	put_online_cpus();
+	cpus_read_unlock();
 #endif
 
 	return 0;
@@ -168,7 +168,7 @@ static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 		cp++;
 	}
 
-	get_online_cpus();
+        cpus_read_unlock();
 	for_each_cpu(i, limit_mask) {
 		i_cpu_stats = &per_cpu(msm_perf_cpu_stats, i);
 		if (cpufreq_get_policy(&policy, i))

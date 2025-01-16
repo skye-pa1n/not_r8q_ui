@@ -172,12 +172,12 @@ static void update_policy_online(void)
 	unsigned int i;
 
 	/* Re-evaluate policy to trigger adjust notifier for online CPUs */
-	get_online_cpus();
+	cpus_read_lock();
 	for_each_online_cpu(i) {
 		pr_debug("Updating policy for CPU%d\n", i);
 		cpufreq_update_policy(i);
 	}
-	put_online_cpus();
+	cpus_read_unlock();
 }
 
 static void do_input_boost_rem(struct work_struct *work)

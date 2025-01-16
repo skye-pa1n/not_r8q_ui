@@ -90,7 +90,7 @@ struct event_timer_info *add_event_timer(uint32_t irq,
 		struct irq_desc *desc = irq_to_desc(irq);
 		struct cpumask *mask = desc->irq_common_data.affinity;
 
-		get_online_cpus();
+		cpus_read_lock();
 		event_info->cpu = cpumask_any_and(mask, cpu_online_mask);
 		if (event_info->cpu >= nr_cpu_ids)
 			event_info->cpu = cpumask_first(cpu_online_mask);
@@ -98,7 +98,7 @@ struct event_timer_info *add_event_timer(uint32_t irq,
 		event_info->notify.notify = irq_affinity_change_notifier;
 		event_info->notify.release = irq_affinity_release;
 		irq_set_affinity_notifier(irq, &event_info->notify);
-		put_online_cpus();
+		cpus_read_unlock();
 	}
 
 	/* Init rb node and hr timer */

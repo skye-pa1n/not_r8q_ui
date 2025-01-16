@@ -86,14 +86,14 @@ static void update_online_cpu_policy(void)
 	unsigned int cpu;
 
 	/* Only one CPU from each cluster needs to be updated */
-	get_online_cpus();
+	cpus_read_lock();
 	cpu = cpumask_first_and(cpu_lp_mask, cpu_online_mask);
 	cpufreq_update_policy(cpu);
 	cpu = cpumask_first_and(cpu_perf_mask, cpu_online_mask);
 	cpufreq_update_policy(cpu);
 	cpu = cpumask_first_and(cpu_prime_mask, cpu_online_mask);
 	cpufreq_update_policy(cpu);
-	put_online_cpus();
+	cpus_read_unlock();
 }
 
 static void __cpu_input_boost_kick(struct boost_drv *b)

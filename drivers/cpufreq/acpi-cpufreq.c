@@ -141,9 +141,9 @@ static void boost_set_msr_each(void *p_en)
 
 static int set_boost(int val)
 {
-	get_online_cpus();
+	cpus_read_lock();
 	on_each_cpu(boost_set_msr_each, (void *)(long)val, 1);
-	put_online_cpus();
+	cpus_read_unlock();
 	pr_debug("Core Boosting %sabled.\n", val ? "en" : "dis");
 
 	return 0;

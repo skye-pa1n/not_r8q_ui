@@ -264,7 +264,7 @@ static int msm_cpufreq_resume(void)
 	 * in policy->cur violating min/max constraint.
 	 * Correct the frequency as soon as possible.
 	 */
-	get_online_cpus();
+	cpus_read_lock();
 	for_each_online_cpu(cpu) {
 		ret = cpufreq_get_policy(&policy, cpu);
 		if (ret)
@@ -273,7 +273,7 @@ static int msm_cpufreq_resume(void)
 			continue;
 		cpufreq_update_policy(cpu);
 	}
-	put_online_cpus();
+	cpus_read_unlock();
 
 	return NOTIFY_DONE;
 }

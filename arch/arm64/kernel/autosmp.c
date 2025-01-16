@@ -201,7 +201,7 @@ static void __ref asmp_work_fn(struct work_struct *work) {
     min_cpu_pr = asmp_param.min_cpus_pr;
 
     /* find current max and min cpu freq to estimate load */
-    get_online_cpus();
+    cpus_read_lock();
     cpu_load_lc = get_cpu_loads(0);
     fast_load_lc = cpu_load_lc;
     cpu_load_bc = get_cpu_loads(4);
@@ -239,7 +239,7 @@ static void __ref asmp_work_fn(struct work_struct *work) {
                 fast_load_lc = load;
         }
     }
-    put_online_cpus();
+    cpus_read_unlock();
     
     /********************************************************************
      *                     Prime Cluster cpu(7)                     *
