@@ -1322,15 +1322,15 @@ static int sugov_init(struct cpufreq_policy *policy)
 	default:
 	case 0:
 		tunables->up_rate_limit_us = 1000;
-	        tunables->down_rate_limit_us = 4000;
+	        tunables->down_rate_limit_us = 700;
 		break;
 	case 4:
 		tunables->up_rate_limit_us = 2120;
-	        tunables->down_rate_limit_us = 4470;
+	        tunables->down_rate_limit_us = 770;
 		break;
 	case 7:
 		tunables->up_rate_limit_us = 4170;
-	        tunables->down_rate_limit_us = 4530;
+	        tunables->down_rate_limit_us = 730;
 		break;
 	}
 	
@@ -1522,12 +1522,12 @@ static struct cpufreq_governor schedutil_gov = {
 	.stop			= sugov_stop,
 	.limits			= sugov_limits,
 };
-/*
+
 struct cpufreq_governor *cpufreq_default_governor(void)
 {
 		return &schedutil_gov;
 }
-*/
+
 static int __init sugov_register(void)
 {
 	return cpufreq_register_governor(&schedutil_gov);

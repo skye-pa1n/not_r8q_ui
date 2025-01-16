@@ -1509,15 +1509,15 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	default:
 	case 0:
 		tunables->up_rate_limit_us = 1000;
-	        tunables->down_rate_limit_us = 1500;
+	        tunables->down_rate_limit_us = 500;
 		break;
 	case 4:
-		tunables->up_rate_limit_us = 8000;
-	        tunables->down_rate_limit_us = 1070;
+		tunables->up_rate_limit_us = 6000;
+	        tunables->down_rate_limit_us = 370;
 		break;
 	case 7:
 		tunables->up_rate_limit_us = 4000;
-	        tunables->down_rate_limit_us = 1030;
+	        tunables->down_rate_limit_us = 130;
 		break;
 	}
 	

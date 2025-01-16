@@ -1513,7 +1513,7 @@ static int uaggov_init(struct cpufreq_policy *policy)
 		break;
 	case 4:
 		tunables->up_rate_limit_us = 800;
-	        tunables->down_rate_limit_us = 1070;
+	        tunables->down_rate_limit_us = 710;
 		break;
 	case 7:
 		tunables->up_rate_limit_us = 500;
