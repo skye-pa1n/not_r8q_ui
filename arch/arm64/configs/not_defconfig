@@ -1,5 +1,5 @@
 # Kernel name
-CONFIG_LOCALVERSION="-not-endless+"
+CONFIG_LOCALVERSION="-not-interstellar+"
 
 #
 # IRQ subsystem
