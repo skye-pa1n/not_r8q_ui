@@ -23,7 +23,6 @@ jobs:
     - name: Set up Clang 19.1.0
       run: |
         echo "/usr/local/clang-19.1/bin" >> $GITHUB_PATH
-        echo "/usr/local/clang-19.1/lib" >> $GITHUB_LIB_PATH
 
     - name: Build
       uses: ElGabrielx7/kernel_build_action@main
