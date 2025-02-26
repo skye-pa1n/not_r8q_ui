@@ -11,15 +11,16 @@ jobs:
       contents: read
 
     steps:
-    - name: Download Clang 21
+    - name: Baixar Clang 21
       run: |
         mkdir -p clang-21
-        wget https://github.com/llvm/llvm-project/releases/download/llvmorg-21.0.0/clang+llvm-21.0.0-x86_64-linux-gnu.tar.xz
-        tar -xf clang+llvm-21.0.0-x86_64-linux-gnu.tar.xz -C clang-21 --strip-components=1
+        wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0git-20250225.tar.gz
+        tar -xf Clang-21.0.0git-20250225.tar.gz -C clang-21 --strip-components=1
+
     - name: Build Kernel
       uses: ElGabrielx7/kernel_build_action@main
       with:
-          kernel-url: https://github.com/ElGabrielx7/Gabrielx7-android_kernel_samsung_sm8250.git
+          kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
           kernel-dir: interstellar
           kernel-branch: interstellar
           config: not_defconfig
