@@ -44,8 +44,8 @@ jobs:
         kernel-branch: interstellar
         config: not_defconfig
         arch: arm64
-        aosp-gcc: true
-        aosp-clang: false
+        aosp-gcc: false
+        aosp-clang: true
         ksu: true
         kvm: true
         anykernel3: true
