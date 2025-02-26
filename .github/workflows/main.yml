@@ -11,28 +11,48 @@ jobs:
       contents: read
 
     steps:
-    - name: Baixar Clang 21
+    - name: Checkout Kernel Repository
+      uses: actions/checkout@v2
+
+    - name: Install build dependencies
       run: |
-        mkdir -p ~/clang-21
-        wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0git-20250225.tar.gz
-        tar -xf Clang-21.0.0git-20250225.tar.gz -C ~/clang-21 --strip-components=1
-        echo "CLANG_PATH=$HOME/clang-21" >> $GITHUB_ENV
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev bison flex libssl-dev libelf-dev bc
+
+    - name: Download Clang 21
+      run: |
+        mkdir -p ~/clang
+        wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0git-20250225.tar.gz -O ~/clang/clang.tar.gz
+        tar -xvf ~/clang/clang.tar.gz -C ~/clang/
+        rm ~/clang/clang.tar.gz  # Remover arquivo para economizar espaço
+
+    - name: Set Clang Path
+      run: echo "PATH=$PATH:~/clang/bin" >> $GITHUB_ENV
+
+    - name: Verify Clang Version
+      run: clang --version
+
+    - name: Debug MAKECMDGOALS
+      run: |
+        echo "MAKECMDGOALS: ${{ github.event.inputs.MAKECMDGOALS }}"
 
     - name: Build Kernel
       uses: ElGabrielx7/kernel_build_action@main
       with:
-          kernel-url: https://github.com/ElGabrielx7/Gabrielx7-android_kernel_samsung_sm8250.git
-          kernel-dir: interstellar
-          kernel-branch: interstellar
-          config: not_defconfig
-          arch: arm64
-          aosp-clang: false
-          other-clang-url: ${{ env.CLANG_PATH }}
-          ksu: true
-          kvm: true
+        kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
+        kernel-dir: interstellar
+        kernel-branch: interstellar
+        config: not_defconfig
+        arch: arm64
+        aosp-gcc: true
+        aosp-clang: false
+        ksu: true
+        kvm: true
+        anykernel3: true
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: kernel-artifacts
         path: anykernel3/*.zip
+        extra_flags: "V=1"
