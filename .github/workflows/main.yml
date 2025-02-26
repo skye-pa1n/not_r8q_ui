@@ -7,6 +7,22 @@ jobs:
   build-kernel:
     name: Build Kernel
     runs-on: ubuntu-22.04
+
+steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Download and Install Clang 19.1.0
+      run: |
+        wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
+        tar -xf clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
+        sudo mv clang+llvm-19.1.0-aarch64-linux-gnu /usr/local/clang-19.1
+
+    - name: Set up Clang 19.1.0
+      run: |
+        echo "/usr/local/clang-19.1/bin" >> $GITHUB_PATH
+        echo "/usr/local/clang-19.1/lib" >> $GITHUB_LIB_PATH
+        
     steps:
       - name: Build
         uses: ElGabrielx7/kernel_build_action@main
@@ -16,6 +32,6 @@ jobs:
           config: not_defconfig
           arch: arm64
           aosp-gcc: true
-          aosp-clang: true
+          aosp-clang: false
           android-version: 15
           aosp-clang-version: r522817
