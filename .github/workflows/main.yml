@@ -1,4 +1,4 @@
-name: Build kernel
+name: Build Kernel
 
 on:
   workflow_dispatch:
@@ -11,25 +11,22 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout Kernel Source
-      uses: actions/checkout@v4
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
 
-    - name: Download and Install Clang 19.1.0
-      run: |
-        wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
-        tar -xf clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
-        sudo mv clang+llvm-19.1.0-aarch64-linux-gnu /usr/local/clang-19.1
+      - name: Download and Install Clang 19.1.0
+        run: |
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
+          tar -xf clang+llvm-19.1.0-aarch64-linux-gnu.tar.xz
+          sudo mv clang+llvm-19.1.0-aarch64-linux-gnu /usr/local/clang-19.1
+          echo "/usr/local/clang-19.1/bin" >> $GITHUB_PATH
 
-    - name: Set up Clang 19.1.0
-      run: |
-        echo "/usr/local/clang-19.1/bin" >> $GITHUB_PATH
-
-    - name: Build
-      uses: ElGabrielx7/kernel_build_action@main
-      with:
-        kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
-        kernel-branch: interstellar
-        config: not_defconfig
-        arch: arm64
-        aosp-gcc: true
-        aosp-clang: false
+      - name: Build Kernel
+        uses: ElGabrielx7/kernel_build_action@main
+        with:
+          kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
+          kernel-branch: interstellar
+          config: not_defconfig
+          arch: arm64
+          aosp-gcc: false  # Desativado para evitar erro do GCC ausente
+          aosp-clang: false  # Desativado para evitar conflito com Clang 19.1.0
