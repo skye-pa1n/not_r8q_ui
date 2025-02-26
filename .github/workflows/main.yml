@@ -1,42 +1,21 @@
+name: CI
+
 on:
   workflow_dispatch:
 
 jobs:
-  Build-Kernel:
-    strategy:
-      fail-fast: false
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+  build-kernel:
+    name: Build Kernel
+    runs-on: ubuntu-22.04
     steps:
-    - name: Checkout Kernel Repository
-      uses: actions/checkout@v4
-      with:
-        repository: ElGabrielx7/not_r8q_ui
-        ref: interstellar  # Garantir que está na branch certa
-
-    - name: Build Kernel
-      uses: ElGabrielx7/kernel_build_action@main
-      with:
+      - name: Build
+        uses: ElGabrielx7/kernel_build_action@main
+        with:
           kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
-          kernel-dir: interstellar
           kernel-branch: interstellar
           config: not_defconfig
           arch: arm64
           aosp-gcc: true
           aosp-clang: true
-          ksu: true
-          kvm: true
           android-version: 12
-          aosp-clang-version: r416183b1
-          anykernel3: false
-
-    # New step to upload compilation artifacts
-    - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: kernel-artifacts
-        path: |
-          out/*  # Substitua pelo caminho correto onde os artefatos são gerados
-          anykernel3/*.zip  # Se o AnyKernel for usado, garanta que os arquivos de saída estejam nesse caminho
+          aosp-clang-version: r383902
