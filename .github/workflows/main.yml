@@ -13,10 +13,10 @@ jobs:
     steps:
     - name: Baixar Clang 21
       run: |
-        mkdir -p clang-21
+        mkdir -p ~/clang-21
         wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0git-20250225.tar.gz
-        tar -xf Clang-21.0.0git-20250225.tar.gz -C clang-21 --strip-components=1
-        echo "CLANG_PATH=$PWD/clang-21" >> $GITHUB_ENV
+        tar -xf Clang-21.0.0git-20250225.tar.gz -C ~/clang-21 --strip-components=1
+        echo "CLANG_PATH=$HOME/clang-21" >> $GITHUB_ENV
 
     - name: Build Kernel
       uses: ElGabrielx7/kernel_build_action@main
