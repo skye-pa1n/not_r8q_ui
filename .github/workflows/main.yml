@@ -7,10 +7,10 @@ jobs:
   build-kernel:
     name: Build Kernel
     runs-on: ubuntu-22.04
-      permissions:
-        contents: read
+    permissions:
+      contents: read
 
-steps:
+    steps:
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
 
@@ -24,16 +24,13 @@ steps:
       run: |
         echo "/usr/local/clang-19.1/bin" >> $GITHUB_PATH
         echo "/usr/local/clang-19.1/lib" >> $GITHUB_LIB_PATH
-        
-    steps:
-      - name: Build
-        uses: ElGabrielx7/kernel_build_action@main
-        with:
-          kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
-          kernel-branch: interstellar
-          config: not_defconfig
-          arch: arm64
-          aosp-gcc: true
-          aosp-clang: false
-          android-version: 15
-          aosp-clang-version: r522817
+
+    - name: Build
+      uses: ElGabrielx7/kernel_build_action@main
+      with:
+        kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
+        kernel-branch: interstellar
+        config: not_defconfig
+        arch: arm64
+        aosp-gcc: true
+        aosp-clang: false
