@@ -16,7 +16,6 @@ jobs:
         mkdir -p clang-21
         wget https://github.com/llvm/llvm-project/releases/download/llvmorg-21.0.0/clang+llvm-21.0.0-x86_64-linux-gnu.tar.xz
         tar -xf clang+llvm-21.0.0-x86_64-linux-gnu.tar.xz -C clang-21 --strip-components=1
-
     - name: Build Kernel
       uses: Gabrielx7/kernel_build_action@main
       with:
