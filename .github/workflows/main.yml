@@ -1,32 +1,48 @@
 name: Build Kernel
-
 on:
   workflow_dispatch:
 
 jobs:
-  build-kernel:
-    name: Build Kernel
-    runs-on: ubuntu-22.04
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
     permissions:
       contents: read
 
     steps:
-      - name: Checkout Kernel Source
-        uses: actions/checkout@v4
+    - name: Checkout Kernel Repository
+      uses: actions/checkout@v2
 
-      - name: Download and Install Clang 21.0.0
-        run: |
-          wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0.tar.gz
-          tar -xf Clang-21.0.0.tar.gz
-          sudo mv Clang-21.0.0 /usr/local/clang-21.0
-          echo "/usr/local/clang-21.0/bin" >> $GITHUB_PATH
+    - name: Download Clang 21
+      run: |
+        mkdir -p ~/clang
+        wget https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250225-release/Clang-21.0.0git-20250225.tar.gz -O ~/clang/clang.tar.gz
+        tar -xvf ~/clang/clang.tar.gz -C ~/clang/
+        rm ~/clang/clang.tar.gz  # Remover arquivo para economizar espaço
 
-      - name: Build Kernel
-        uses: ElGabrielx7/kernel_build_action@main
-        with:
-          kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
-          kernel-branch: interstellar
-          config: not_defconfig
-          arch: arm64
-          aosp-gcc: false  # Mantendo desativado para evitar erro do GCC ausente
-          aosp-clang: false  # Desativado para evitar conflito com Clang 21.0.0
+    - name: Set Clang Path
+      run: echo "PATH=$PATH:~/clang/bin" >> $GITHUB_ENV
+
+    - name: Verify Clang Version
+      run: clang --version
+
+    - name: Build Kernel
+      uses: ElGabrielx7/kernel_build_action@main
+      with:
+        kernel-url: https://github.com/ElGabrielx7/not_r8q_ui.git
+        kernel-dir: interstellar
+        kernel-branch: interstellar
+        config: r8q_defconfig
+        arch: arm64
+        aosp-gcc: true
+        aosp-clang: false
+        ksu: true
+        kvm: true
+        anykernel3: false
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-artifacts
+        path: anykernel3/*.zip
