@@ -1,0 +1,36 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Build Kernel
+      uses: ElGabrielx7/kernel_build_action@main
+      with:
+          kernel-url: https://github.com/ElGabrielx7/G-not_r8q_ui.git
+          kernel-dir: interstellar
+          kernel-branch: interstellar
+          config: not_defconfig
+          arch: arm64
+          aosp-gcc: true
+          aosp-clang: true
+          ksu: true
+          kvm: true
+          android-version: 12
+          aosp-clang-version: r416183b1
+          anykernel3: true
+
+    # New step to upload compilation artifacts
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-artifacts
+        path: |
+          O=dir/to/store/output/files/
+          anykernel3/*.zip
