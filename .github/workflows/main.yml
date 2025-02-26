@@ -10,6 +10,12 @@ jobs:
       contents: read
 
     steps:
+    - name: Checkout Kernel Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ElGabrielx7/not_r8q_ui
+        ref: interstellar  # Garantir que está na branch certa
+
     - name: Build Kernel
       uses: ElGabrielx7/kernel_build_action@main
       with:
@@ -32,5 +38,5 @@ jobs:
       with:
         name: kernel-artifacts
         path: |
-          O=dir/to/store/output/files/
-          anykernel3/*.zip
+          out/*  # Substitua pelo caminho correto onde os artefatos são gerados
+          anykernel3/*.zip  # Se o AnyKernel for usado, garanta que os arquivos de saída estejam nesse caminho
